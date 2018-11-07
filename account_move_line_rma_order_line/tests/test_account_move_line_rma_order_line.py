@@ -239,9 +239,9 @@ class TestAccountMoveLineRmaOrderLine(common.SavepointCase):
         picking = self.env['stock.picking'].browse(res['res_id'])
         picking.move_lines.write({'quantity_done': 1.0})
         picking.button_validate()
-
-        expected_balance = 1.0
-        self._check_account_balance(self.account_inventory.id,
+        # decreasing cogs
+        expected_balance = -1.0
+        self._check_account_balance(self.account_cogs.id,
                                     rma_line=rma_line,
                                     expected_balance=expected_balance)
         make_refund = self.rma_refund_wiz.with_context({
