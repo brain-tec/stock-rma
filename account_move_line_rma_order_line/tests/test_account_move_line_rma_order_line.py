@@ -234,8 +234,8 @@ class TestAccountMoveLineRmaOrderLine(common.SavepointCase):
         picking.action_assign()
         picking.do_transfer()
 
-        expected_balance = 1.0
-        self._check_account_balance(self.account_inventory.id,
+        expected_balance = -1.0
+        self._check_account_balance(self.account_cogs.id,
                                     rma_line=rma_line,
                                     expected_balance=expected_balance)
 
