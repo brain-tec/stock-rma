@@ -120,10 +120,7 @@ class RmaOrderLine(models.Model):
     @api.depends('move_ids', 'move_ids.state', 'type')
     def _compute_qty_received(self):
         for rec in self:
-            if rec.supplier_to_customer:
-                qty = rec._get_rma_move_qty('done', direction='out')
-            else:
-                qty = rec._get_rma_move_qty('done', direction='in')
+            qty = rec._get_rma_move_qty('done', direction='in')
             rec.qty_received = qty
 
     @api.multi
@@ -138,10 +135,7 @@ class RmaOrderLine(models.Model):
     @api.depends('move_ids', 'move_ids.state', 'type')
     def _compute_qty_delivered(self):
         for rec in self:
-            if rec.supplier_to_customer:
-                qty = rec._get_rma_move_qty('done', direction='in')
-            else:
-                qty = rec._get_rma_move_qty('done', direction='out')
+            qty = rec._get_rma_move_qty('done', direction='out')
             rec.qty_delivered = qty
 
     @api.model
@@ -620,7 +614,7 @@ class RmaOrderLine(models.Model):
         result = action.read()[0]
         # choose the view_mode accordingly
         if rma_lines and len(rma_lines) != 1:
-            result['domain'] = rma_lines.ids
+            result['domain'] = [('id', 'in', rma_lines)]
         elif len(rma_lines) == 1:
             result['views'] = [(res and res.id or False, 'form')]
             result['res_id'] = rma_lines[0]
