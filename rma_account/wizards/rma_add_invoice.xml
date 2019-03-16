@@ -21,9 +21,9 @@
                         <field name="name"/>
                         <field name="account_id" groups="account.group_account_user"/>
                         <field name="quantity"/>
-                        <field name="uom_id" groups="product.group_uom"/>
+                        <field name="uom_id" groups="uom.group_uom"/>
                         <field name="price_unit"/>
-                        <field name="discount" groups="sale.group_discount_per_so_line"/>
+                        <field name="discount" groups="base.group_no_one"/>
                         <field name="price_subtotal"/>
                         <field name="currency_id" invisible="1"/>
                     </tree>
@@ -60,9 +60,9 @@
                         <field name="name"/>
                         <field name="account_id" groups="account.group_account_user"/>
                         <field name="quantity"/>
-                        <field name="uom_id" groups="product.group_uom"/>
+                        <field name="uom_id" groups="uom.group_uom"/>
                         <field name="price_unit"/>
-                        <field name="discount" groups="sale.group_discount_per_so_line"/>
+                        <field name="discount" groups="base.group_no_one"/>
                         <field name="price_subtotal"/>
                         <field name="currency_id" invisible="1"/>
                     </tree>
