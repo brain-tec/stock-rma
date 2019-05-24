@@ -3,12 +3,12 @@
 
 {
     "name": "RMA Repair",
-    "version": "12.0.1.0.0",
+    "version": "12.0.1.1.0",
     "license": "LGPL-3",
     "category": "RMA",
     "summary": "Links RMA with Repairs.",
     "author": "Eficent, Odoo Community Association (OCA)",
-    "website": "http://www.github.com/OCA/rma",
+    "website": "https://github.com/Eficent/stock-rma",
     "depends": [
         "rma_account",
         "repair_refurbish"
