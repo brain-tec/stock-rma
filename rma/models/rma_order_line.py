@@ -199,7 +199,7 @@ class RmaOrderLine(models.Model):
         readonly=True, states={'draft': [('readonly', False)]},
         copy=False,
         help='Add here the supplier RMA #. Otherwise an internal code is'
-             ' assigned.',
+             ' assigned.', copy=False
     )
     description = fields.Text(string='Description')
     conditions = fields.Html(string='Terms and conditions')
