@@ -147,11 +147,12 @@ class RmaLineMakeSaleOrderItem(models.TransientModel):
 
     def compute_line_id(self):
         rma_line_obj = self.env['rma.order.line']
-        if not self.env.context['active_ids']:
-            return
-        rma_line_ids = self.env.context['active_ids'] or []
-        lines = rma_line_obj.browse(rma_line_ids)
-        self.line_id = lines[0]
+        for rec in self:
+            if not self.env.context['active_ids']:
+                return
+            rma_line_ids = self.env.context['active_ids'] or []
+            lines = rma_line_obj.browse(rma_line_ids)
+            rec.line_id = lines[0]
 
     @api.onchange('product_id')
     def onchange_product_id(self):
