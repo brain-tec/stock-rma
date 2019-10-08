@@ -70,8 +70,23 @@ class RmaOrderLine(models.Model):
 
     delivery_policy = fields.Selection(selection_add=[
         ('repair', 'Based on Repair Quantities')])
+    qty_to_pay = fields.Float(
+        compute='_compute_qty_to_pay')
     qty_to_deliver = fields.Float(
         compute='_compute_qty_to_deliver')
+
+    @api.multi
+    @api.depends('delivery_policy', 'product_qty', 'type', 'repair_ids',
+                 'repair_ids.state', 'repair_ids.invoice_method',
+                 'repair_type', 'repair_ids.invoice_status')
+    def _compute_qty_to_pay(self):
+        for rec in self.filtered(lambda l: l.delivery_policy == 'repair'):
+            qty_to_pay = 0.0
+            for repair in rec.repair_ids.filtered(
+                    lambda r: r.invoice_method != 'none'
+                    and r.invoice_status != 'paid'):
+                qty_to_pay += repair.product_qty
+            rec.qty_to_pay = qty_to_pay
 
     @api.multi
     def action_view_repair_order(self):
@@ -123,9 +138,10 @@ class RmaOrderLine(models.Model):
     @api.depends('move_ids', 'move_ids.state',
                  'delivery_policy', 'product_qty', 'type', 'qty_delivered',
                  'qty_received', 'repair_ids', 'repair_type',
-                 'repair_ids.state')
+                 'repair_ids.state', 'qty_to_pay', 'repair_ids.invoice_status')
     def _compute_qty_to_deliver(self):
         res = super(RmaOrderLine, self)._compute_qty_to_deliver()
         for rec in self.filtered(lambda l: l.delivery_policy == 'repair'):
-            rec.qty_to_deliver = rec.qty_repaired - rec.qty_delivered
+            rec.qty_to_deliver = rec.qty_repaired - rec.qty_delivered - \
+                rec.qty_to_pay
         return res
