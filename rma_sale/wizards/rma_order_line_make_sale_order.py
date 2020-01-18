@@ -23,7 +23,6 @@ class RmaLineMakeSaleOrder(models.TransientModel):
     def _prepare_item(self, line):
         return {
             'line_id': line.id,
-            'rma_line_id': line.id,
             'product_id': line.product_id.id,
             'name': line.product_id.name,
             'product_qty': line.qty_to_sell,
@@ -33,9 +32,9 @@ class RmaLineMakeSaleOrder(models.TransientModel):
         }
 
     @api.model
-    def default_get(self, fields):
+    def default_get(self, fields_list):
         res = super(RmaLineMakeSaleOrder, self).default_get(
-            fields)
+            fields_list)
         rma_line_obj = self.env['rma.order.line']
         rma_line_ids = self.env.context['active_ids'] or []
         active_model = self.env.context['active_model']
@@ -111,16 +110,10 @@ class RmaLineMakeSaleOrder(models.TransientModel):
             so_line_obj.create(so_line_data)
             res.append(sale.id)
 
-        return {
-            'domain': "[('id','in', ["+','.join(map(str, res))+"])]",
-            'name': _('Quotations'),
-            'view_type': 'form',
-            'view_mode': 'tree,form',
-            'res_model': 'sale.order',
-            'view_id': False,
-            'context': False,
-            'type': 'ir.actions.act_window'
-        }
+        action = self.env.ref('sale.action_orders')
+        result = action.read()[0]
+        result['domain'] = "[('id','in', ["+','.join(map(str, res))+"])]"
+        return result
 
 
 class RmaLineMakeSaleOrderItem(models.TransientModel):
