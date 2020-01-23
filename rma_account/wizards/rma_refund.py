@@ -20,6 +20,7 @@ class RmaRefund(models.TransientModel):
     def _prepare_item(self, line):
         values = {
             "product_id": line.product_id.id,
+            "product": line.product_id.id,
             "name": line.name,
             "product_qty": line.product_qty,
             "uom_id": line.uom_id.id,
@@ -64,14 +65,15 @@ class RmaRefund(models.TransientModel):
     date_invoice = fields.Date(
         string="Refund Date", default=fields.Date.context_today, required=True
     )
-    date = fields.Date(string="Accounting Date")
+    date = fields.Date(
+        string="Accounting Date", default=fields.Date.context_today, required=True
+    )
     description = fields.Char(
         string="Reason", required=True, default=lambda self: self._get_reason()
     )
     item_ids = fields.One2many(
         comodel_name="rma.refund.item", inverse_name="wiz_id", string="Items"
     )
-
 
     def compute_refund(self):
         for wizard in self:
@@ -82,7 +84,6 @@ class RmaRefund(models.TransientModel):
                 refund_line_values = self.prepare_refund_line(item, new_refund)
                 self.env["account.move.line"].create(refund_line_values)
             return new_refund
-
 
     def invoice_refund(self):
         rma_line_ids = self.env["rma.order.line"].browse(self.env.context["active_ids"])
@@ -116,14 +117,15 @@ class RmaRefund(models.TransientModel):
             raise ValidationError(_("Accounts are not configured for this product."))
         values = {
             "name": item.line_id.name or item.rma_id.name,
-            "invoice_origin": item.line_id.name or item.rma_id.name,
             "account_id": account.id,
+            "debit": item.line_id.price_unit,  # todo fix
+            "credit": item.line_id.price_unit,
             "price_unit": item.line_id.price_unit,
-            "uom_id": item.line_id.uom_id.id,
+            "product_uom_id": item.line_id.uom_id.id,
             "product_id": item.product_id.id,
             "rma_line_id": item.line_id.id,
             "quantity": item.qty_to_refund,
-            "account_move_id": refund.id,
+            "move_id": refund.id,
         }
         return values
 
@@ -142,13 +144,13 @@ class RmaRefund(models.TransientModel):
             "name": rma_line.rma_id.name or rma_line.name,
             "invoice_origin": rma_line.rma_id.name or rma_line.name,
             "ref": False,
-            # 'account_id': account.id,
             "journal_id": journal.id,
             "currency_id": rma_line.partner_id.company_id.currency_id.id,
             "fiscal_position_id": rma_line.partner_id.property_account_position_id.id,
             "state": "draft",
+            "currency_id": rma_line.currency_id.id,
             "date": wizard.date,
-            "date_invoice": wizard.date_invoice,
+            "invoice_date": wizard.date_invoice,
             "partner_id": rma_line.invoice_address_id.id or rma_line.partner_id.id,
         }
         if self.env.registry.models.get("crm.team", False):

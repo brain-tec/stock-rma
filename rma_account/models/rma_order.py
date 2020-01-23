@@ -7,12 +7,10 @@ from odoo import api, fields, models
 class RmaOrder(models.Model):
     _inherit = "rma.order"
 
-
     def _compute_invoice_refund_count(self):
         for rec in self:
             invoices = rec.mapped("rma_line_ids.refund_line_ids.move_id")
             rec.invoice_refund_count = len(invoices)
-
 
     def _compute_invoice_count(self):
         for rec in self:
@@ -92,7 +90,6 @@ class RmaOrder(models.Model):
         res["invoice_address_id"] = partner.id
         return res
 
-
     def action_view_invoice_refund(self):
         action = self.env.ref("account.action_invoice_tree2")
         result = action.read()[0]
@@ -106,7 +103,6 @@ class RmaOrder(models.Model):
                 result["views"] = [(res and res.id or False, "form")]
                 result["res_id"] = move_ids[0]
         return result
-
 
     def action_view_invoice(self):
         if self.type == "supplier":
