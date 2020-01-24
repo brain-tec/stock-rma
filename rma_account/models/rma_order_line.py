@@ -17,7 +17,6 @@ class RmaOrderLine(models.Model):
             return self.env["res.partner"].browse(partner_id)
         return self.env["res.partner"]
 
-
     @api.depends(
         "refund_line_ids", "refund_line_ids.move_id.state", "refund_policy", "type"
     )
@@ -47,7 +46,6 @@ class RmaOrderLine(models.Model):
             elif res.refund_policy == "delivered":
                 qty = res.qty_delivered - res.qty_refunded
             res.qty_to_refund = qty
-
 
     def _compute_refund_count(self):
         for rec in self:
@@ -133,7 +131,6 @@ class RmaOrderLine(models.Model):
         res["domain"]["account_move_line_id"] = domain
         return res
 
-
     def _prepare_rma_line_from_inv_line(self, line):
         self.ensure_one()
         if not self.type:
@@ -206,7 +203,6 @@ class RmaOrderLine(models.Model):
         self.update(data)
         self._remove_other_data_origin("account_move_line_id")
 
-
     @api.constrains("account_move_line_id", "partner_id")
     def _check_invoice_partner(self):
         for rec in self:
@@ -221,7 +217,6 @@ class RmaOrderLine(models.Model):
                     )
                 )
 
-
     def _remove_other_data_origin(self, exception):
         res = super(RmaOrderLine, self)._remove_other_data_origin(exception)
         if not exception == "account_move_line_id":
@@ -234,7 +229,6 @@ class RmaOrderLine(models.Model):
         if self.operation_id:
             self.refund_policy = self.operation_id.refund_policy or "no"
         return result
-
 
     @api.constrains("account_move_line_id")
     def _check_duplicated_lines(self):
@@ -252,7 +246,6 @@ class RmaOrderLine(models.Model):
                 )
         return {}
 
-
     def action_view_invoice(self):
         action = self.env.ref("account.action_invoice_tree")
         result = action.read()[0]
@@ -261,7 +254,6 @@ class RmaOrderLine(models.Model):
         result["view_id"] = res and res.id or False
         result["res_id"] = self.account_move_line_id.move_id.id
         return result
-
 
     def action_view_refunds(self):
         action = self.env.ref("account.action_invoice_tree2")
@@ -276,7 +268,6 @@ class RmaOrderLine(models.Model):
                 result["views"] = [(res and res.id or False, "form")]
                 result["res_id"] = move_ids[0]
         return result
-
 
     def name_get(self):
         res = []

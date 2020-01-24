@@ -115,7 +115,6 @@ class RmaAddAccountMove(models.TransientModel):
             existing_invoice_lines.append(rma_line.account_move_line_id)
         return existing_invoice_lines
 
-
     def add_lines(self):
         rma_line_obj = self.env["rma.order.line"]
         existing_invoice_lines = self._get_existing_invoice_lines()

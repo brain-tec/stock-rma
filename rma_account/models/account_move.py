@@ -29,7 +29,7 @@ class AccountMove(models.Model):
                 {"journal_id": self.journal_id.id, "type": "in_invoice"}
             )._default_account(),
             "price_unit": line.company_id.currency_id.with_context(
-                date=self.date_invoice
+                date=self.date
             ).compute(line.price_unit, self.currency_id, round=False),
             "quantity": qty,
             "discount": 0.0,
@@ -62,7 +62,6 @@ class AccountMove(models.Model):
         help="Create a refund in based on an existing rma_line",
     )
 
-
     def action_view_rma_supplier(self):
         action = self.env.ref("rma.action_rma_supplier_lines")
         result = action.read()[0]
@@ -76,7 +75,6 @@ class AccountMove(models.Model):
                 result["views"] = [(res and res.id or False, "form")]
                 result["res_id"] = rma_ids[0]
         return result
-
 
     def action_view_rma_customer(self):
         action = self.env.ref("rma.action_rma_customer_lines")
@@ -117,7 +115,6 @@ class AccountMoveLine(models.Model):
             )
         return res
 
-
     def name_get(self):
         res = []
         if self.env.context.get("rma"):
@@ -154,7 +151,6 @@ class AccountMoveLine(models.Model):
             return res
         else:
             return super(AccountMoveLine, self).name_get()
-
 
     def _compute_rma_count(self):
         for invl in self:
