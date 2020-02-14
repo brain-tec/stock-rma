@@ -144,7 +144,6 @@ class RmaRefund(models.TransientModel):
             "ref": False,
             "type": "in_refund" if rma_line.type == "supplier" else "out_refund",
             "journal_id": journal.id,
-            "currency_id": rma_line.partner_id.company_id.currency_id.id,
             "fiscal_position_id": rma_line.partner_id.property_account_position_id.id,
             "state": "draft",
             "currency_id": rma_line.currency_id.id,
