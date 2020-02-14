@@ -12,7 +12,7 @@ class TestRmaAccount(common.SingleTransactionCase):
         cls.rma_obj = cls.env["rma.order"]
         cls.rma_line_obj = cls.env["rma.order.line"]
         cls.rma_op_obj = cls.env["rma.operation"]
-        cls.rma_add_invoice_wiz = cls.env["rma_add_invoice"]
+        cls.rma_add_invoice_wiz = cls.env["rma_add_account_move"]
         cls.rma_refund_wiz = cls.env["rma.refund"]
         cls.acc_obj = cls.env["account.account"]
         cls.inv_obj = cls.env["account.move"]
@@ -73,69 +73,63 @@ class TestRmaAccount(common.SingleTransactionCase):
         )
 
         # Create Invoices:
-        customer_account = cls.acc_obj.search(
+        cls.customer_account = cls.acc_obj.search(
             [("user_type_id", "=", receivable_type.id)], limit=1
         ).id
-        cls.inv_customer = cls.inv_obj.create(
+        cls.inv_line_ids = [
             {
-                "partner_id": customer1.id,
-                "account_id": customer_account,
-                "type": "out_invoice",
-            }
-        )
-        cls.inv_line_1 = cls.invl_obj.create(
-            {
-                "name": cls.product_1.name,
+                "nasme": cls.product_1.name,
                 "product_id": cls.product_1.id,
                 "quantity": 12.0,
                 "price_unit": 100.0,
-                "move_id": cls.inv_customer.id,
-                "uom_id": cls.product_1.uom_id.id,
-                "account_id": customer_account,
-            }
-        )
-        cls.inv_line_2 = cls.invl_obj.create(
+                "product_uom_id": cls.product_1.uom_id.id,
+                "account_id": cls.customer_account,
+            },
             {
                 "name": cls.product_2.name,
                 "product_id": cls.product_2.id,
                 "quantity": 15.0,
                 "price_unit": 150.0,
-                "move_id": cls.inv_customer.id,
-                "uom_id": cls.product_2.uom_id.id,
-                "account_id": customer_account,
+                "product_uom_id": cls.product_2.uom_id.id,
+                "account_id": cls.customer_account,
+            },
+        ]
+        cls.inv_customer = cls.inv_obj.create(
+            {
+                "partner_id": customer1.id,
+                "type": "out_invoice",
+                "invoice_line_ids": [
+                    (0, None, cls.prepare_inv_line(item)) for item in cls.inv_ids
+                ],
             }
         )
-
-        supplier_account = cls.acc_obj.search(
+        cls.supplier_account = cls.acc_obj.search(
             [("user_type_id", "=", payable_type.id)], limit=1
         ).id
-        cls.inv_supplier = cls.inv_obj.create(
-            {
-                "partner_id": supplier1.id,
-                "account_id": supplier_account,
-                "type": "in_invoice",
-            }
-        )
-        cls.inv_line_3 = cls.invl_obj.create(
+
+        cls.inv_sup_line_ids = [
             {
                 "name": cls.product_3.name,
                 "product_id": cls.product_3.id,
                 "quantity": 17.0,
                 "price_unit": 250.0,
-                "move_id": cls.inv_supplier.id,
-                "uom_id": cls.product_3.uom_id.id,
-                "account_id": supplier_account,
-            }
-        )
-        cls.inv_line_4 = cls.invl_obj.create(
+                "product_uom_id": cls.product_3.uom_id.id,
+                "account_id": cls.supplier_account,
+            },
             {
                 "name": cls.product_4.name,
                 "product_id": cls.product_4.id,
                 "quantity": 9.0,
                 "price_unit": 300.0,
-                "move_id": cls.inv_supplier.id,
-                "uom_id": cls.product_4.uom_id.id,
-                "account_id": supplier_account,
+                "product_uom_id": cls.product_4.uom_id.id,
+                "account_id": cls.supplier_account,
+            },
+        ]
+        cls.inv_supplier = cls.inv_obj.create(
+            {
+                "partner_id": supplier1.id,
+                "type": "in_invoice",
+                "invoice_line_ids": [(0, None, item) for item in cls.inv_sup_line_ids],
             }
         )
 

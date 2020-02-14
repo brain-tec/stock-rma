@@ -245,27 +245,29 @@ class RmaOrderLine(models.Model):
         return {}
 
     def action_view_invoice(self):
-        action = self.env.ref("account.action_invoice_tree")
-        result = action.read()[0]
-        res = self.env.ref("account.view_move_form", False)
-        result["views"] = [(res and res.id or False, "form")]
-        result["view_id"] = res and res.id or False
-        result["res_id"] = self.account_move_line_id.move_id.id
-        return result
+        form_view_ref = self.env.ref("account.view_move_form", False)
+        tree_view_ref = self.env.ref("account.view_move_tree", False)
+
+        return {
+            "domain": [("id", "in", [self.account_move_line_id.move_id.id])],
+            "name": "Originating Invoice",
+            "res_model": "account.move",
+            "type": "ir.actions.act_window",
+            "views": [(tree_view_ref.id, "tree"), (form_view_ref.id, "form")],
+        }
 
     def action_view_refunds(self):
-        action = self.env.ref("account.action_invoice_tree2")
-        result = action.read()[0]
         move_ids = self.mapped("refund_line_ids.move_id").ids
-        if move_ids:
-            # choose the view_mode accordingly
-            if len(move_ids) > 1:
-                result["domain"] = [("id", "in", move_ids)]
-            else:
-                res = self.env.ref("account.move_supplier_form", False)
-                result["views"] = [(res and res.id or False, "form")]
-                result["res_id"] = move_ids[0]
-        return result
+        form_view_ref = self.env.ref("account.view_move_form", False)
+        tree_view_ref = self.env.ref("account.view_move_tree", False)
+
+        return {
+            "domain": [("id", "in", move_ids)],
+            "name": "Refunds",
+            "res_model": "account.move",
+            "type": "ir.actions.act_window",
+            "views": [(tree_view_ref.id, "tree"), (form_view_ref.id, "form")],
+        }
 
     def name_get(self):
         res = []

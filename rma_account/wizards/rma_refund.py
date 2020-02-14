@@ -116,8 +116,6 @@ class RmaRefund(models.TransientModel):
         values = {
             "name": item.line_id.name or item.rma_id.name,
             "account_id": account.id,
-            "debit": item.line_id.price_unit,  # todo fix
-            "credit": item.line_id.price_unit,
             "price_unit": item.line_id.price_unit,
             "product_uom_id": item.line_id.uom_id.id,
             "product_id": item.product_id.id,
@@ -210,7 +208,7 @@ class RmaRefundItem(models.TransientModel):
         comodel_name="res.partner", string="Invoice Address"
     )
     qty_to_refund = fields.Float(
-        string="Quantity To Refund", digits=dp.get_precision("Product Unit of Measure")
+        string="Quantity To Refund", digits="Product Unit of Measure"
     )
     uom_id = fields.Many2one("uom.uom", string="Unit of Measure", readonly=True)
     refund_policy = fields.Selection(
