@@ -22,7 +22,7 @@ class RmaOrderLine(models.Model):
         for rec in self:
             rec.qty_refunded = sum(
                 rec.refund_line_ids.filtered(
-                    lambda i: i.move_id.state in ("open", "paid")
+                    lambda i: i.move_id.state in ("posted")
                 ).mapped("quantity")
             )
 
