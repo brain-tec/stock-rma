@@ -22,7 +22,7 @@ class RmaOrderLine(models.Model):
         for rec in self:
             rec.qty_refunded = sum(
                 rec.refund_line_ids.filtered(
-                    lambda i: i.move_id.state in ("open", "paid")
+                    lambda i: i.move_id.state in ("posted")
                 ).mapped("quantity")
             )
 
@@ -120,12 +120,16 @@ class RmaOrderLine(models.Model):
         if not res.get("domain"):
             res["domain"] = {}
         domain = [
+            "&",
+            "&",
+            ("rma_line_id", "=", False),
+            ("exclude_from_invoice_tab", "=", False),
             "|",
             ("move_id.partner_id", "=", self.partner_id.id),
             ("move_id.partner_id", "child_of", self.partner_id.id),
         ]
-        if self.product_id:
-            domain.append(("product_id", "=", self.product_id.id))
+        # if self.product_id:
+        #     domain.insert(2, ("product_id", "=", self.product_id.id))
         res["domain"]["account_move_line_id"] = domain
         return res
 
