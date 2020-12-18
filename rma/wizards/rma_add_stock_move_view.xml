@@ -8,14 +8,12 @@
                 <group>
                     <field
                         name="partner_id"
-                        domain="[('customer','=',True)]"
                         string="Customer"
                     />
                 </group>
                 <separator string="Select Stock Moves to add" />
                 <field
                     name="move_ids"
-                    domain="[('picking_id.partner_id', '=', partner_id), ('location_dest_id.usage', '=', 'customer')]"
                 >
                     <tree>
                         <field name="product_id" />
@@ -36,7 +34,6 @@
                         />
                         <field name="create_date" groups="base.group_no_one" />
                         <field name="date" string="Date" groups="base.group_no_one" />
-                        <field name="date_expected" string="Date Expected" />
                         <field name="state" />
                     </tree>
                 </field>
@@ -93,14 +90,12 @@
                 <group>
                     <field
                         name="partner_id"
-                        domain="[('supplier','=',True)]"
                         string="Supplier"
                     />
                 </group>
                 <separator string="Select Stock Moves to add" />
                 <field
                     name="move_ids"
-                    domain="[('picking_id.partner_id', '=', partner_id), ('location_id.usage', '=', 'supplier')]"
                 />
                 <footer>
                     <button
