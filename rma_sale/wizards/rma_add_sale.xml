@@ -9,8 +9,6 @@
                 <group>
                     <field
                         name="partner_id"
-                        domain="[('customer','=',True)]"
-                        string="Customer"
                     />
                 </group>
                 <separator string="Select Sale Order Lines to Add" />
