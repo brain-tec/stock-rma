@@ -342,6 +342,7 @@ class RmaOrderLine(models.Model):
         string="Delivery Policy",
         default="no",
         readonly=True,
+        ondelete='cascade',
         states={"draft": [("readonly", False)]},
     )
     in_route_id = fields.Many2one(
