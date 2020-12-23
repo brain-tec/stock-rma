@@ -39,7 +39,7 @@ class PurchaseOrderLine(models.Model):
             name_get_uid=name_get_uid,
         )
 
-    @api.multi
+
     def name_get(self):
         res = []
         if self.env.context.get("rma"):
