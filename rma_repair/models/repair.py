@@ -1,4 +1,4 @@
-# Copyright 2020 ForgeFlow S.L.
+# Copyright 2020-21 ForgeFlow S.L.
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 from odoo import fields, models
@@ -11,8 +11,8 @@ class RepairOrder(models.Model):
         comodel_name="rma.order.line", string="RMA", ondelete="restrict"
     )
     under_warranty = fields.Boolean(
-        related="rma_line_id.under_warranty", readonly=False
+        related="rma_line_id.under_warranty",
     )
-    invoice_status = fields.Selection(
-        related="invoice_id.state", string="Invoice Status"
+    payment_state = fields.Selection(
+        related="invoice_id.payment_state", string="Payment Status"
     )
