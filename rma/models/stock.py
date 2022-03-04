@@ -66,3 +66,8 @@ class StockMove(models.Model):
         if self.env.context.get("force_no_bypass_reservation"):
             return False
         return res
+
+    @api.model
+    def _prepare_merge_moves_distinct_fields(self):
+        res = super()._prepare_merge_moves_distinct_fields()
+        return res + ["rma_line_id"]
