@@ -9,7 +9,7 @@ class ResPartner(models.Model):
 
     def _compute_rma_line_count(self):
         for rec in self:
-            rec.rma_line_count = len(rec.rma_line_ids)
+            rec.sudo().rma_line_count = len(rec.rma_line_ids)
 
     rma_line_ids = fields.One2many(
         comodel_name="rma.order.line", string="RMAs", inverse_name="partner_id"
