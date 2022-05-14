@@ -35,7 +35,11 @@ class StockRule(models.Model):
                 res["partner_id"] = line.delivery_address_id.id
             else:
                 res["partner_id"] = line.rma_id.partner_id.id
-            dest_loc = self.env["stock.location"].browse([res["location_dest_id"]])[0]
-            if dest_loc.usage == "internal":
-                res["price_unit"] = line.price_unit
+            # We are not checking the reference move here because if stock account
+            # is not installed, there is no way to know the cost of the stock move
+            # so better use the standard cost in this case.
+            company_id = res["company_id"]
+            company = self.env["res.company"].browse(company_id)
+            cost = product_id.with_company(company).standard_price
+            res["price_unit"] = cost
         return res
