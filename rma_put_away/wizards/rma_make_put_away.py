@@ -9,7 +9,11 @@ class RmaMakePutAway(models.TransientModel):
     _name = "rma_make_put_away.wizard"
     _description = "Wizard to create put away from rma lines"
 
-    item_ids = fields.One2many("rma_make_picking.wizard.item", "wiz_id", string="Items")
+    item_ids = fields.One2many(
+        comodel_name="rma_make_put_away.wizard.item",
+        inverse_name="wiz_id",
+        string="Items",
+    )
 
     @api.returns("rma.order.line")
     def _prepare_item(self, line):
@@ -174,4 +178,31 @@ class RmaMakePutAway(models.TransientModel):
             "rma_line_id": item.line_id.id if not item.line_id.rma_id else False,
         }
         return group_data
+
+
+class RmaMakePutAwayItem(models.TransientModel):
+    _name = "rma_make_put_away.wizard.item"
+    _description = "Items to Put Away"
+
+    wiz_id = fields.Many2one("rma_make_put_away.wizard", string="Wizard", required=True)
+    line_id = fields.Many2one(
+        "rma.order.line", string="RMA order Line", ondelete="cascade"
+    )
+    rma_id = fields.Many2one("rma.order", related="line_id.rma_id", string="RMA Group")
+    product_id = fields.Many2one("product.product", string="Product")
+    product_qty = fields.Float(
+        related="line_id.product_qty",
+        string="Quantity Ordered",
+        copy=False,
+        digits="Product Unit of Measure",
+    )
+    qty_to_receive = fields.Float(
+        string="Quantity to Receive", digits="Product Unit of Measure"
+    )
+    qty_to_deliver = fields.Float(
+        string="Quantity To Deliver", digits="Product Unit of Measure"
+    )
+    uom_id = fields.Many2one("uom.uom", string="Unit of Measure")
+
+
 
