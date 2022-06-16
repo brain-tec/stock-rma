@@ -9,7 +9,11 @@ class RmaMakePutAway(models.TransientModel):
     _name = "rma_make_put_away.wizard"
     _description = "Wizard to create put away from rma lines"
 
-    item_ids = fields.One2many("rma_make_picking.wizard.item", "wiz_id", string="Items")
+    item_ids = fields.One2many(
+        comodel_name="rma_make_put_away.wizard.item",
+        inverse_name="wiz_id",
+        string="Items",
+    )
 
     @api.returns("rma.order.line")
     def _prepare_item(self, line):
@@ -73,54 +77,7 @@ class RmaMakePutAway(models.TransientModel):
 
     def action_create_put_away(self):
         self._create_put_away()
-        move_line_model = self.env["stock.move.line"]
-        picking_type = "internal"
-        pickings = self.mapped("item_ids.line_id")._get_in_pickings()
         action = self.item_ids.line_id.action_view_in_shipments()
-        if picking_type == "internal":
-            # Force the reservation of the RMA specific lot for incoming shipments.
-            # FIXME: still needs fixing, not reserving appropriate serials.
-            for move in pickings.move_lines.filtered(
-                lambda x: x.state not in ("draft", "cancel", "done")
-                          and x.rma_line_id
-                          and x.product_id.tracking in ("lot", "serial")
-                          and x.rma_line_id.lot_id
-            ):
-                # Force the reservation of the RMA specific lot for incoming shipments.
-                move.move_line_ids.unlink()
-                if move.product_id.tracking == "serial":
-                    move.write(
-                        {
-                            "lot_ids": [(6, 0, move.rma_line_id.lot_id.ids)],
-                        }
-                    )
-                    move.move_line_ids.write(
-                        {
-                            "product_uom_qty": 1,
-                            "qty_done": 0,
-                        }
-                    )
-                elif move.product_id.tracking == "lot":
-                    if picking_type == "internal":
-                        qty = self.item_ids.filtered(
-                            lambda x: x.line_id.id == move.rma_line_id.id
-                        ).qty_to_receive
-                    else:
-                        qty = self.item_ids.filtered(
-                            lambda x: x.line_id.id == move.rma_line_id.id
-                        ).qty_to_deliver
-                    move_line_data = move._prepare_move_line_vals()
-                    move_line_data.update(
-                        {
-                            "lot_id": move.rma_line_id.lot_id.id,
-                            "product_uom_id": move.product_id.uom_id.id,
-                            "qty_done": 0,
-                            "product_uom_qty": qty,
-                        }
-                    )
-                    move_line_model.create(move_line_data)
-
-            pickings.with_context(force_no_bypass_reservation=True).action_assign()
         return action
 
     @api.model
@@ -212,3 +169,40 @@ class RmaMakePutAway(models.TransientModel):
             return self.env["procurement.group"].search(
                 [("rma_line_id", "=", item.line_id.id)]
             )
+
+    def _get_procurement_group_data(self, item):
+        group_data = {
+            "partner_id": item.line_id.partner_id.id,
+            "name": item.line_id.rma_id.name or item.line_id.name,
+            "rma_id": item.line_id.rma_id and item.line_id.rma_id.id or False,
+            "rma_line_id": item.line_id.id if not item.line_id.rma_id else False,
+        }
+        return group_data
+
+
+class RmaMakePutAwayItem(models.TransientModel):
+    _name = "rma_make_put_away.wizard.item"
+    _description = "Items to Put Away"
+
+    wiz_id = fields.Many2one("rma_make_put_away.wizard", string="Wizard", required=True)
+    line_id = fields.Many2one(
+        "rma.order.line", string="RMA order Line", ondelete="cascade"
+    )
+    rma_id = fields.Many2one("rma.order", related="line_id.rma_id", string="RMA Group")
+    product_id = fields.Many2one("product.product", string="Product")
+    product_qty = fields.Float(
+        related="line_id.product_qty",
+        string="Quantity Ordered",
+        copy=False,
+        digits="Product Unit of Measure",
+    )
+    qty_to_receive = fields.Float(
+        string="Quantity to Receive", digits="Product Unit of Measure"
+    )
+    qty_to_deliver = fields.Float(
+        string="Quantity To Deliver", digits="Product Unit of Measure"
+    )
+    uom_id = fields.Many2one("uom.uom", string="Unit of Measure")
+
+
+
