@@ -67,10 +67,6 @@ class RmaMakePutAway(models.TransientModel):
             line = item.line_id
             if line.state != "approved":
                 raise ValidationError(_("RMA %s is not approved") % line.name)
-            if line.receipt_policy == "no" and picking_type == "incoming":
-                raise ValidationError(_("No shipments needed for this operation"))
-            if line.delivery_policy == "no" and picking_type == "outgoing":
-                raise ValidationError(_("No deliveries needed for this operation"))
             procurement = self._create_procurement(item, picking_type)
             procurements.extend(procurement)
         return procurements
@@ -104,10 +100,8 @@ class RmaMakePutAway(models.TransientModel):
     @api.model
     def _get_procurement_data(self, item, group, qty, picking_type):
         line = item.line_id
-        delivery_address_id = self._get_address(item)
-        location = self._get_address_location(delivery_address_id, line.type)
-        warehouse = line.out_warehouse_id
-        route = line.out_route_id
+        warehouse = line.operation_id.internal_warehouse_id
+        route = line.operation_id.internal_route_id
         if not route:
             raise ValidationError(_("No route specified"))
         if not warehouse:
@@ -120,11 +114,12 @@ class RmaMakePutAway(models.TransientModel):
             "date_planned": time.strftime(DT_FORMAT),
             "product_id": item.product_id,
             "product_qty": qty,
-            "partner_id": delivery_address_id.id,
+#            "partner_id": delivery_address_id.id,
             "product_uom": line.product_id.product_tmpl_id.uom_id.id,
-            "location_id": location,
+#            "location_id": location,
             "rma_line_id": line.id,
             "route_ids": route,
+            "company_id": line.company_id
         }
         return procurement_data
 
@@ -170,7 +165,7 @@ class RmaMakePutAway(models.TransientModel):
                 [("rma_line_id", "=", item.line_id.id)]
             )
 
-    def _get_procurement_group_data(self, item):
+    def _get_procurement_group_data_put_away(self, item):
         group_data = {
             "partner_id": item.line_id.partner_id.id,
             "name": item.line_id.rma_id.name or item.line_id.name,
