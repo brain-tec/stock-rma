@@ -1,5 +1,5 @@
-# Copyright 2020 ForgeFlow S.L.
-# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
+# Copyright 2022 ForgeFlow S.L.
+# License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl-3.0.html).
 
 from odoo import fields, models
 
@@ -16,18 +16,14 @@ class RmaOperation(models.Model):
         string="Put Away Policy",
         default="no",
     )
-
-    internal_route_id = fields.Many2one(
+    put_away_route_id = fields.Many2one(
         comodel_name="stock.location.route",
-        string="Internal Route",
+        string="Put Away Route",
         domain=[("rma_selectable", "=", True)],
         default=lambda self: self._default_routes(),
     )
 
-    internal_warehouse_id = fields.Many2one(
-        comodel_name="stock.warehouse",
-        string="Internal Destination Warehouse",
-        default=lambda self: self._default_warehouse_id(),
+    put_away_location_id = fields.Many2one(
+        comodel_name="stock.location",
+        string="Put Away Destination Location",
     )
-
-

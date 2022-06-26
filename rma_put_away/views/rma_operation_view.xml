@@ -2,7 +2,7 @@
 <odoo>
 
     <record id="rma_operation_tree" model="ir.ui.view">
-        <field name="name">rma.operation.tree - rma_put_away</field>
+        <field name="name">rma.operation.tree</field>
         <field name="model">rma.operation</field>
         <field name="inherit_id" ref="rma.rma_operation_tree" />
         <field name="arch" type="xml">
@@ -21,9 +21,9 @@
                 <field name="put_away_policy" />
             </field>
             <group name="outbound" position="after">
-                <group name="internal" string="Internal">
-                    <field name="internal_route_id"/>
-                    <field name="internal_warehouse_id"/>
+                <group name="put_away" string="Put Away">
+                    <field name="put_away_route_id" string="Route" />
+                    <field name="put_away_location_id" string="Destination Location" />
                 </group>
             </group>
         </field>
