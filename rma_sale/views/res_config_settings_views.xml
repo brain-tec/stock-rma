@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.rma</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="10" />
+        <field name="inherit_id" ref="base.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='rma_account']" position="after">
+                <div name='auto_confirm_rma_sale' class="col-12 col-lg-6 o_setting_box">
+                    <div class="o_setting_left_pane">
+                        <field name="auto_confirm_rma_sale" />
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label for="auto_confirm_rma_sale" />
+                        <div class="text-muted">
+                            Auto confirm sales order
+                        </div>
+                    </div>
+                </div>
+                <div
+                    name='free_of_charge_rma_sale'
+                    class="col-12 col-lg-6 o_setting_box"
+                >
+                    <div class="o_setting_left_pane">
+                        <field name="free_of_charge_rma_sale" />
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label for="free_of_charge_rma_sale" />
+                        <div class="text-muted">
+                            Make sales orders from RMA free of charge
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_rma_config_settings" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module' : 'rma'}</field>
+    </record>
+
+</odoo>

@@ -29,6 +29,7 @@ class RmaLineMakeSaleOrder(models.TransientModel):
 
     @api.model
     def _prepare_item(self, line):
+        auto_confirm_rma_sale = line.company_id.auto_confirm_rma_sale
         return {
             "line_id": line.id,
             "product_id": line.product_id.id,
@@ -37,6 +38,7 @@ class RmaLineMakeSaleOrder(models.TransientModel):
             "rma_id": line.rma_id.id,
             "out_warehouse_id": line.out_warehouse_id.id,
             "product_uom_id": line.uom_id.id,
+            "free_of_charge": auto_confirm_rma_sale,
         }
 
     @api.model
@@ -126,6 +128,8 @@ class RmaLineMakeSaleOrder(models.TransientModel):
 
             so_line_data = self._prepare_sale_order_line(sale, item)
             so_line_obj.create(so_line_data)
+            if sale.company_id.auto_confirm_rma_sale:
+                sale.action_confirm()
             res.append(sale.id)
 
         action = self.env.ref("sale.action_orders")
