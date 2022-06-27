@@ -6,5 +6,3 @@ from . import rma_order_line
 from . import rma_order
 from . import rma_operation
 from . import procurement
-from . import res_company
-from . import res_config_settings
