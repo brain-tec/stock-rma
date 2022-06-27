@@ -36,7 +36,7 @@ class RmaLineMakeRepair(models.TransientModel):
             or line.location_id.id,
             "location_dest_id": line.operation_id.repair_location_dest_id.id
             or line.location_id.id,
-            "invoice_method": "after_repair",
+            "invoice_method": line.operation_id.repair_invoice_method or "after_repair",
         }
 
     @api.model
