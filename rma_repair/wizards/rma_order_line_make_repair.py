@@ -32,8 +32,9 @@ class RmaLineMakeRepair(models.TransientModel):
             "partner_id": line.partner_id.id,
             "to_refurbish": to_refurbish,
             "refurbish_product_id": refurbish_product_id,
-            "location_id": line.location_id.id,
-            "location_dest_id": line.location_id.id,
+            "location_id": line.operation_id.location_id.id or line.location_id.id,
+            "location_dest_id": line.operation_id.location_dest_id.id
+            or line.location_id.id,
             "invoice_method": "after_repair",
         }
 
