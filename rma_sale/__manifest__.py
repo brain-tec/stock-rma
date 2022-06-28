@@ -19,7 +19,6 @@
         "wizards/rma_order_line_make_sale_order_view.xml",
         "wizards/rma_add_sale.xml",
         "views/rma_order_line_view.xml",
-        "views/res_config_settings_views.xml",
     ],
     "installable": True,
 }
