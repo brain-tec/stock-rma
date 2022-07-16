@@ -30,6 +30,7 @@
                     name="action_view_invoice"
                     class="oe_stat_button"
                     icon="fa-pencil-square-o"
+                    attrs="{'invisible': [('account_move_line_id', '=', False)]}"
                     string="Origin Inv"
                 >
                 </button>
@@ -38,6 +39,7 @@
                     name="action_view_refunds"
                     class="oe_stat_button"
                     icon="fa-pencil-square-o"
+                    attrs="{'invisible': [('refund_count', '=', 0)]}"
                     groups="account.group_account_invoice"
                 >
                         <field name="refund_count" widget="statinfo" string="Refunds" />
@@ -58,7 +60,11 @@
                 <field name="refund_policy" />
             </field>
             <page name="stock" position="after">
-                <page name="refunds" string="Refunds">
+                <page
+                    name="refunds"
+                    string="Refunds"
+                    attrs="{'invisible': [('refund_line_ids', '=', [])]}"
+                >
                     <field name="refund_line_ids" nolabel="1" />
                 </page>
             </page>
@@ -69,7 +75,10 @@
                 />
             </field>
             <group name="supplier_rma" position="after">
-                <group name="refund">
+                <group
+                    name="refund"
+                    attrs="{'invisible': [('refund_policy', '=', 'no')]}"
+                >
                     <field name="qty_to_refund" />
                     <field name="qty_refunded" />
                 </group>
