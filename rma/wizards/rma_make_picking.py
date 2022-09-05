@@ -5,7 +5,7 @@ import time
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as DT_FORMAT
+from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as DT_FORMAT, float_compare
 
 
 class RmaMakePicking(models.TransientModel):
@@ -150,7 +150,12 @@ class RmaMakePicking(models.TransientModel):
             qty = item.qty_to_deliver
             force_rule_ids = item.line_id.out_route_id.rule_ids.ids
         values = self._get_procurement_data(item, group, qty, picking_type)
-        values = dict(values, rma_line_id=item.line_id, rma_id=item.line_id.rma_id)
+        product = item.line_id.product_id
+        if float_compare(qty, 0, product.uom_id.rounding) != 1:
+            raise ValidationError(
+                _("No quantity to transfer on %s shipment of product %s.")
+                % (_(picking_type), product.default_code or product.name)
+            )
         # create picking
         procurements = []
         try:
