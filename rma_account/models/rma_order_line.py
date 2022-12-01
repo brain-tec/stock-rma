@@ -307,3 +307,53 @@ class RmaOrderLine(models.Model):
             return res
         else:
             return super(RmaOrderLine, self).name_get()
+
+    def _stock_account_anglo_saxon_reconcile_valuation(self):
+        for rma in self:
+            prod = rma.product_id
+            if rma.product_id.valuation != "real_time":
+                continue
+            if not rma.company_id.anglo_saxon_accounting:
+                continue
+            product_accounts = prod.product_tmpl_id._get_product_accounts()
+            if rma.type == "customer":
+                product_interim_account = product_accounts["stock_output"]
+            else:
+                product_interim_account = product_accounts["stock_input"]
+            if product_interim_account.reconcile:
+                # Get the in and out moves
+                amls = self.env["account.move.line"].search(
+                    [
+                        ("rma_line_id", "=", rma.id),
+                        ("account_id", "=", product_interim_account.id),
+                        ("parent_state", "=", "posted"),
+                        ("reconciled", "=", False),
+                    ]
+                )
+                amls |= rma.move_ids.mapped(
+                    "stock_valuation_layer_ids.account_move_id.line_ids"
+                )
+                # Search for anglo-saxon lines linked to the product in the journal entry.
+                amls = amls.filtered(
+                    lambda line: line.product_id == prod
+                    and line.account_id == product_interim_account
+                    and not line.reconciled
+                )
+                # Reconcile.
+                amls.reconcile()
+
+    def _get_price_unit(self):
+        self.ensure_one()
+        price_unit = super(RmaOrderLine, self)._get_price_unit()
+        if self.reference_move_id:
+            move = self.reference_move_id
+            layers = move.sudo().stock_valuation_layer_ids
+            if layers:
+                price_unit = sum(layers.mapped("value")) / sum(
+                    layers.mapped("quantity")
+                )
+                price_unit = price_unit
+        elif self.account_move_line_id and self.type == "supplier":
+            # We get the cost from the original invoice line
+            price_unit = self.account_move_line_id.price_unit
+        return price_unit
