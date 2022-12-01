@@ -18,7 +18,7 @@ class StockRule(models.Model):
         company_id,
         values,
     ):
-        res = super(StockRule, self)._get_stock_move_values(
+        res = super()._get_stock_move_values(
             product_id,
             product_qty,
             product_uom,
@@ -28,10 +28,6 @@ class StockRule(models.Model):
             company_id,
             values,
         )
-        if "rma_line_id" in values:
-            line = values.get("rma_line_id")
-            line = self.env["rma.order.line"].browse([line])
-            if line.reference_move_id:
-                return res
-            res["price_unit"] = line._get_price_unit()
+        if "is_rma_scrap" in values:
+            res["is_rma_scrap"] = values.get("is_rma_scrap")
         return res
