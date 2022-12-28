@@ -28,7 +28,7 @@ jobs:
               fi
           done
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container: ${{ matrix.container }}
     name: ${{ matrix.name }}
     strategy:
@@ -36,7 +36,7 @@ jobs:
       matrix:
         include:
           - container: ghcr.io/oca/oca-ci/py3.8-odoo15.0:latest
-            makepot: "true"
+            makepot: "false"
             name: test with Odoo
           - container: ghcr.io/oca/oca-ci/py3.8-ocb15.0:latest
             name: test with OCB
