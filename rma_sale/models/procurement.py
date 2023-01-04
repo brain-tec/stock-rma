@@ -33,21 +33,5 @@ class StockRule(models.Model):
             line = self.env["rma.order.line"].browse([line])
             if line.reference_move_id:
                 return res
-            if line.sale_line_id:
-                moves = line.sale_line_id.move_ids
-                if moves:
-                    # TODO: Should we be smart in the choice of the move?
-                    layers = moves.mapped("stock_valuation_layer_ids")
-                    if layers:
-                        cost = layers[-1].unit_cost
-                        res["price_unit"] = cost
-            elif line.account_move_line_id:
-                sale_lines = line.account_move_line_id.sale_line_ids
-                moves = sale_lines.mapped("move_ids")
-                if moves:
-                    layers = moves.mapped("stock_valuation_layer_ids")
-                    if layers:
-                        cost = layers[-1].unit_cost
-                        # TODO: Should we be smart in the choice of the move?
-                        res["price_unit"] = cost
+            res["price_unit"] = line._get_price_unit()
         return res

@@ -78,6 +78,7 @@ class RmaAddPurchase(models.TransientModel):
                 )
         data = {
             "partner_id": self.partner_id.id,
+            "description": self.rma_id.description,
             "purchase_order_line_id": line.id,
             "product_id": line.product_id.id,
             "origin": line.order_id.name,
@@ -128,7 +129,12 @@ class RmaAddPurchase(models.TransientModel):
             # Load a PO line only once
             if line not in existing_purchase_lines:
                 data = self._prepare_rma_line_from_po_line(line)
-                rma_line_obj.create(data)
+                rec = rma_line_obj.create(data)
+                # Ensure that configuration on the operation is applied
+                # TODO MIG: in v16 the usage of such onchange can be removed in
+                #  favor of (pre)computed stored editable fields for all policies
+                #  and configuration in the RMA operation.
+                rec._onchange_operation_id()
         rma = self.rma_id
         data_rma = self._get_rma_data()
         rma.write(data_rma)

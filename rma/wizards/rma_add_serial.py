@@ -102,6 +102,7 @@ class RmaAddSerialWiz(models.TransientModel):
 
         vals = {
             "partner_id": self.partner_id.id,
+            "description": self.rma_id.description,
             "product_id": lot.product_id.id,
             "lot_id": lot.id,
             "uom_id": lot.product_id.uom_id.id,
@@ -133,5 +134,11 @@ class RmaAddSerialWiz(models.TransientModel):
                 )
 
             vals = self._prepare_rma_line_from_lot_vals(lot)
-            rma_line_obj.create(vals)
+            rec = rma_line_obj.create(vals)
+            # Ensure that configuration on the operation is applied (like
+            #  policies).
+            # TODO MIG: in v16 the usage of such onchange can be removed in
+            #  favor of (pre)computed stored editable fields for all policies
+            #  and configuration in the RMA operation.
+            rec._onchange_operation_id()
         return {"type": "ir.actions.act_window_close"}

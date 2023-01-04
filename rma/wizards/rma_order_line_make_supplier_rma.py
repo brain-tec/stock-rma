@@ -113,6 +113,7 @@ class RmaLineMakeSupplierRma(models.TransientModel):
                 )
         data = {
             "partner_id": self.partner_id.id,
+            "description": self.supplier_rma_id.description,
             "type": "supplier",
             "origin": item.line_id.rma_id.name,
             "customer_address_id": item.line_id.delivery_address_id.id
@@ -157,7 +158,13 @@ class RmaLineMakeSupplierRma(models.TransientModel):
                 rma = rma_obj.create(rma_data)
 
             rma_line_data = self._prepare_supplier_rma_line(rma, item)
-            rma_line_obj.create(rma_line_data)
+            rec = rma_line_obj.create(rma_line_data)
+            # Ensure that configuration on the operation is applied (like
+            #  policies).
+            # TODO MIG: in v16 the usage of such onchange can be removed in
+            #  favor of (pre)computed stored editable fields for all policies
+            #  and configuration in the RMA operation.
+            rec._onchange_operation_id()
         action = self.env.ref("rma.action_rma_supplier_lines")
         rma_lines = self.item_ids.mapped("line_id.supplier_rma_line_ids").ids
         result = action.sudo().read()[0]
