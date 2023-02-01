@@ -1,0 +1,9 @@
+diff a/.github/workflows/pre-commit.yml b/.github/workflows/pre-commit.yml	(rejected hunks)
+@@ -4,3 +4,7 @@ on:
+   pull_request:
++    branches:
++      - "13.0"
+   push:
++    branches:
++      - "13.0"
+ 
