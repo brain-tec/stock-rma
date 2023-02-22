@@ -50,8 +50,6 @@ class AccountMove(models.Model):
             new_line._get_computed_name(),
         )
         new_line.account_id = new_line._get_computed_account()
-        new_line._onchange_price_subtotal()
-        new_line._onchange_mark_recompute_taxes()
         return True
 
     @api.onchange("add_rma_line_id")
@@ -72,7 +70,6 @@ class AccountMove(models.Model):
         origins = set(self.line_ids.mapped("rma_line_id.name"))
         self.invoice_origin = ",".join(list(origins))
         self.add_rma_line_id = False
-        self._onchange_currency()
 
     rma_count = fields.Integer(compute="_compute_rma_count", string="# of RMA")
     used_in_rma_count = fields.Integer(
@@ -272,3 +269,40 @@ class AccountMoveLine(models.Model):
                     self.company_id
                 )._compute_price(average_price_unit, self.product_uom_id)
         return price_unit
+
+    def _get_computed_name(self):
+        self.ensure_one()
+        if not self.product_id:
+            return ""
+        if self.partner_id.lang:
+            product = self.product_id.with_context(lang=self.partner_id.lang)
+        else:
+            product = self.product_id
+        values = []
+        if product.partner_ref:
+            values.append(product.partner_ref)
+        if self.journal_id.type == "sale":
+            if product.description_sale:
+                values.append(product.description_sale)
+        elif self.journal_id.type == "purchase":
+            if product.description_purchase:
+                values.append(product.description_purchase)
+        return "\n".join(values)
+
+    def _get_computed_account(self):
+        self.ensure_one()
+        self = self.with_company(self.move_id.journal_id.company_id)
+
+        if not self.product_id:
+            return
+
+        fiscal_position = self.move_id.fiscal_position_id
+        accounts = self.product_id.product_tmpl_id.get_product_accounts(
+            fiscal_pos=fiscal_position
+        )
+        if self.move_id.is_sale_document(include_receipts=True):
+            # Out invoice.
+            return accounts["income"] or self.account_id
+        elif self.move_id.is_purchase_document(include_receipts=True):
+            # In invoice.
+            return accounts["expense"] or self.account_id
