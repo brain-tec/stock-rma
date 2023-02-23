@@ -51,7 +51,7 @@ class SaleOrderLine(models.Model):
                                     ]
                                 ),
                                 sale.product_id.name,
-                                sale.product_uom_qty,
+                                sale.reserved_uom_qty,
                             ),
                         )
                     )
