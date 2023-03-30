@@ -98,12 +98,24 @@ class RmaOrderLine(models.Model):
             product_obj = self.env["uom.uom"]
             qty = 0.0
             if direction == "in":
-                op = ops["="]
-            else:
-                op = ops["!="]
-            for move in rec.move_ids.filtered(
-                lambda m: m.state in states and op(m.location_id.usage, rec.type)
-            ):
+                moves = rec.move_ids.filtered(
+                    lambda m: m.state in states
+                    and (
+                        m.location_id.usage == "supplier"
+                        or m.location_id.usage == "customer"
+                    )
+                    and m.location_dest_id.usage == "internal"
+                )
+            elif direction == "out":
+                moves = rec.move_ids.filtered(
+                    lambda m: m.state in states
+                    and (
+                        m.location_dest_id.usage == "supplier"
+                        or m.location_dest_id.usage == "customer"
+                    )
+                    and m.location_id.usage == "internal"
+                )
+            for move in moves:
                 # If the move is part of a chain don't count it
                 if direction == "out" and move.move_orig_ids:
                     continue
