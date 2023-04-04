@@ -632,7 +632,11 @@ class RmaOrderLine(models.Model):
         return True
 
     def action_rma_approve(self):
-        self.write({"state": "approved"})
+        if self.env.user.has_group("rma.group_rma_manager"):
+            self.write({"state": "approved"})
+        else:
+            raise UserError(_("You have no access rights to approve this RMA"))
+
         return True
 
     def action_rma_done(self):
