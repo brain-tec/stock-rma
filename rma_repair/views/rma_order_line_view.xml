@@ -37,7 +37,7 @@
                     </button>
             </div>
             <group name="quantities" position="inside">
-                <group>
+                <group attrs="{'invisible': [('repair_type', '=', 'no')]}">
                     <field name="qty_to_repair" />
                     <field name="qty_under_repair" />
                     <field name="qty_to_pay" />
