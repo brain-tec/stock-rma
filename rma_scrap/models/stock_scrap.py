@@ -17,10 +17,11 @@ class StockScrap(models.Model):
     )
 
     def do_scrap(self):
-        super(StockScrap, self).do_scrap()
+        res = super(StockScrap, self).do_scrap()
         if self.is_rma_scrap:
             self.move_id.is_rma_scrap = True
             self.rma_line_id.move_ids |= self.move_id
+        return res
 
     def _prepare_move_values(self):
         res = super(StockScrap, self)._prepare_move_values()
