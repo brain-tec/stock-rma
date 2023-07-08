@@ -417,7 +417,7 @@ class TestRma(common.TransactionCase):
         moves = picking.move_ids
         self.assertEqual(len(moves), 3, "Incorrect number of moves created")
         lines = self.rma_customer_id.rma_line_ids
-        lines.refresh()
+        lines.env.invalidate_all()
         self.assertEqual(
             list(set(lines.mapped("qty_received"))), [0], "Wrong qty received"
         )
@@ -537,7 +537,7 @@ class TestRma(common.TransactionCase):
         moves = picking.move_ids
         self.assertEqual(len(moves), 3, "Incorrect number of moves created")
         lines = self.rma_customer_id.rma_line_ids
-        lines.refresh()
+        lines.env.invalidate_all()
         self.assertEqual(
             list(set(lines.mapped("qty_to_receive"))), [0], "Wrong qty to_receive"
         )
@@ -671,7 +671,7 @@ class TestRma(common.TransactionCase):
         moves = picking.move_ids
         self.assertEqual(len(moves), 3, "Incorrect number of moves created")
         lines = self.rma_droship_id.rma_line_ids
-        lines.refresh()
+        lines.env.invalidate_all()
         self.assertEqual(
             sum(lines.mapped("in_shipment_count")), 3, "Incorrect In Shipment Count"
         )
@@ -693,7 +693,7 @@ class TestRma(common.TransactionCase):
         ).create({})
         wizard.make_supplier_rma()
         lines = self.rma_droship_id.rma_line_ids.mapped("supplier_rma_line_ids")
-        lines.refresh()
+        lines.env.invalidate_all()
         self.assertEqual(
             list(set(lines.mapped("qty_received"))), [0], "Wrong qty_received"
         )
@@ -718,7 +718,7 @@ class TestRma(common.TransactionCase):
             "Wrong qty_to_deliver",
         )
         lines = self.rma_droship_id.rma_line_ids
-        lines.refresh()
+        lines.env.invalidate_all()
         self._check_equal_quantity(
             lines.filtered(
                 lambda l: l.product_id == self.product_1
@@ -766,12 +766,14 @@ class TestRma(common.TransactionCase):
         wizard._create_picking()
         res = self.rma_supplier_id.rma_line_ids.action_view_out_shipments()
         self.assertTrue("res_id" in res, "Incorrect number of pickings" "created")
-        picking = self.env["stock.picking"].browse(res["res_id"])
+        picking = self.rma_supplier_id.rma_line_ids._get_out_pickings()
+        partner = picking.partner_id
+        self.assertTrue(partner, "Partner is not defined or False")
         moves = picking.move_ids
         self.assertEqual(len(moves), 3, "Incorrect number of moves created")
 
         lines = self.rma_supplier_id.rma_line_ids
-        lines.refresh()
+        lines.env.invalidate_all()
         self.assertEqual(
             list(set(lines.mapped("qty_received"))), [0], "Wrong qty_received"
         )
@@ -886,11 +888,13 @@ class TestRma(common.TransactionCase):
         pickings = self.env["stock.picking"].browse(res["res_id"])
         self.assertEqual(len(pickings), 1, "Incorrect number of pickings created")
         picking_in = pickings[0]
-        moves = picking_in.move_ids
+        partner = picking_in.partner_id
+        self.assertTrue(partner, "Partner is not defined or False")
+        moves = picking.move_ids
         self.assertEqual(len(moves), 3, "Incorrect number of moves created")
 
         lines = self.rma_supplier_id.rma_line_ids
-        lines.refresh()
+        lines.env.invalidate_all()
         self.assertEqual(
             list(set(lines.mapped("qty_to_deliver"))), [0], "qty_to_deliver"
         )
@@ -1064,3 +1068,18 @@ class TestRma(common.TransactionCase):
         ).create({})
         with self.assertRaisesRegex(ValidationError, "No quantity to transfer"):
             wizard._create_picking()
+
+    def test_08_supplier_rma_single_line(self):
+        rma_line_id = self.rma_supplier_id.rma_line_ids[0].id
+        wizard = self.rma_make_picking.with_context(
+            active_ids=[rma_line_id],
+            active_model="rma.order.line",
+            picking_type="outgoing",
+            active_id=2,
+        ).create({})
+        wizard._create_picking()
+        picking = self.rma_supplier_id.rma_line_ids[0]._get_out_pickings()
+        partner = picking.partner_id
+        self.assertTrue(partner, "Partner is not defined or False")
+        moves = picking.move_ids
+        self.assertEqual(len(moves), 1, "Incorrect number of moves created")
