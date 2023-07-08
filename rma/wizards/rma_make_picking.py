@@ -102,17 +102,19 @@ class RmaMakePicking(models.TransientModel):
     def _get_procurement_data(self, item, group, qty, picking_type):
         line = item.line_id
         delivery_address_id = self._get_address(item)
+        location, warehouse, route = False, False, False
         if picking_type == "incoming":
             if line.customer_to_supplier:
                 location = self._get_address_location(delivery_address_id, "supplier")
-            elif line.supplier_to_customer:
-                location = self._get_address_location(delivery_address_id, "customer")
             else:
                 location = line.location_id
             warehouse = line.in_warehouse_id
             route = line.in_route_id
-        else:
-            location = self._get_address_location(delivery_address_id, line.type)
+        elif picking_type == "outgoing":
+            if line.supplier_to_customer:
+                location = self._get_address_location(delivery_address_id, "customer")
+            else:
+                location = self._get_address_location(delivery_address_id, line.type)
             warehouse = line.out_warehouse_id
             route = line.out_route_id
         if not route:
@@ -122,7 +124,7 @@ class RmaMakePicking(models.TransientModel):
         procurement_data = {
             "name": line.rma_id and line.rma_id.name or line.name,
             "group_id": group,
-            "origin": line.name,
+            "origin": group and group.name or line.name,
             "warehouse_id": warehouse,
             "date_planned": time.strftime(DT_FORMAT),
             "product_id": item.product_id,
@@ -227,7 +229,7 @@ class RmaMakePicking(models.TransientModel):
                     )
                     move.move_line_ids.write(
                         {
-                            "product_uom_qty": 1,
+                            "reserved_uom_qty": 1,
                             "qty_done": 0,
                         }
                     )
@@ -246,7 +248,7 @@ class RmaMakePicking(models.TransientModel):
                             "lot_id": move.rma_line_id.lot_id.id,
                             "product_uom_id": move.product_id.uom_id.id,
                             "qty_done": 0,
-                            "product_uom_qty": qty,
+                            "reserved_uom_qty": qty,
                         }
                     )
                     move_line_model.create(move_line_data)
