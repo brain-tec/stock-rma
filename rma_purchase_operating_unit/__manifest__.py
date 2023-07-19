@@ -4,13 +4,11 @@
 {
     "name": "RMA Purchase with Operating Units",
     "version": "12.0.1.0.0",
-    "author": "Eficent,"
-              "Odoo Community Association (OCA)",
+    "author": "Eficent," "Odoo Community Association (OCA)",
     "license": "LGPL-3",
-    "website": "http://www.eficent.com",
+    "website": "https://github.com/ForgeFlow/stock-rma",
     "category": "RMA",
     "depends": ["rma_operating_unit", "rma_purchase"],
-    "data": [
-    ],
-    'installable': True,
+    "data": [],
+    "installable": True,
 }
