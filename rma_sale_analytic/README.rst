@@ -2,18 +2,24 @@
    :target: https://www.gnu.org/licenses/lgpl.html
    :alt: License: LGPL-3
 
-=============================
-RMA Sale with Operating Units
-=============================
+==========================
+RMA with Analytic Accounts
+==========================
 
 This module introduces the following features:
 
-* Adds the operating unit to the quotation
+* Adds the analytic account to the RMA order lines from the origin sale.
+
+* Propagates the analytic account to the SO created
+
+* Introduce rules to ensure consistency
+
 
 Usage
 =====
 
-* No changes
+* Add the analytic information in the rma line or let the system fill it
+  from origin
 
 
 Contributors

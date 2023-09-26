@@ -8,11 +8,7 @@
     "license": "AGPL-3",
     "website": "https://github.com/ForgeFlow/stock-rma",
     "category": "Analytic",
-    "depends": [
-        "rma_sale_analytic",
-        "rma_operating_unit",
-        "sale_operating_unit",
-    ],
+    "depends": ["rma_account", "rma_analytic", "rma_sale", "sale_project"],
     "data": [],
     "installable": True,
 }
