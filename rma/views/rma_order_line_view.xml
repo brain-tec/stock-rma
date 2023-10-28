@@ -76,7 +76,7 @@
                         string="Approve"
                         attrs="{'invisible':[('state', '!=', 'to_approve')]}"
                         class="oe_highlight"
-                        groups="rma.group_rma_customer_user"
+                        groups="rma.group_rma_manager"
                     />
                         <button
                         name="action_rma_approve"
@@ -228,7 +228,7 @@
                                 <field name="delivery_policy" />
                             </group>
                             <group name="description" string="Description">
-                                    <field name="description" nolabel="1" />
+                                    <field name="description" nolabel="1" colspan="4" />
                             </group>
                         </group>
                         <notebook>
