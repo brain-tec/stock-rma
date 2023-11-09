@@ -280,8 +280,6 @@
                                     options="{'always_reload': 1}"
                                     required="customer_to_supplier"
                                     invisible="customer_to_supplier == False"
-                                    attrs="{'required':[('customer_to_supplier', '=', True)],
-                                                   'invisible':[('customer_to_supplier', '=', False)]}"
                                 />
                                 </group>
                                 <group name="outbound" string="Outbound">
@@ -292,21 +290,21 @@
                                 />
                                     <field
                                     name="supplier_to_customer"
-                                    attrs="{'invisible':[('type', '!=', 'supplier')]}"
+                                    invisible="type != 'supplier'"
                                 />
                                     <field
                                     name="customer_address_id"
                                     context="{'show_address': 1}"
                                     options="{'always_reload': 1}"
-                                    attrs="{'required':[('supplier_to_customer', '=', True)],
-                                                   'invisible':[('supplier_to_customer', '=', False)]}"
+                                    required="supplier_to_customer"
+                                    invisible="supplier_to_customer == False"
                                 />
                                 </group>
                             </page>
                             <page
                             name="stock"
                             string="Stock Moves"
-                            attrs="{'invisible': [('move_ids', '=', [])]}"
+                            invisible="move_ids == False"
                         >
                                 <field name="move_ids" nolabel="1" readonly="1" />
                             </page>
