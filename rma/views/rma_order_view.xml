@@ -91,7 +91,7 @@
                 </div>
                 <group>
                     <group name="info">
-                        <field name="type" readonly="1" invisible="1" />
+                        <field name="type" readonly="1" invisible="True" />
                         <field
                                 name="partner_id"
                                 context="{'res_partner_search_mode': 'customer'}"
@@ -126,7 +126,7 @@
                                 attrs="{'readonly':[('state', '!=', 'draft')],
                                 'invisible':[('type', '!=', 'customer')]}"
                             />
-                        <field name="state" invisible="1" />
+                        <field name="state" invisible="True" />
                         <field
                                 name="supplier_address_id"
                                 context="{'show_address': 1}"
