@@ -97,8 +97,10 @@
                                 context="{'res_partner_search_mode': 'customer'}"
                                 string="Customer"
                             />
-                        <field name="reference" invisible="type != 'supplier" />
-                        <field name="date_rma" readonly="state != 'draft'" />
+                        <field name="reference"
+                        invisible="type != 'supplier'" />
+                        <field name="date_rma"
+                        readonly="state != 'draft'" />
                     </group>
                     <group name="contact">
                         <field name="requested_by" readonly="1" />
@@ -212,7 +214,7 @@
             </field>
             <group name="inbound_route" position="after">
                 <group name="outbound_route" string="Outbound">
-                    <field name="supplier_to_customer" readonly="state != 'draft" />
+                    <field name="supplier_to_customer" readonly="state != 'draft'" />
                     <field
                         name="customer_address_id"
                         context="{'show_address': 1}"

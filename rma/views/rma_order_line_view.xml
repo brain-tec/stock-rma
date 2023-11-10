@@ -288,7 +288,7 @@
                                     name="out_route_id"
                                     groups="stock.group_adv_location"
                                 />
-                                    <field
+                                <field
                                     name="supplier_to_customer"
                                     invisible="type != 'supplier'"
                                 />
