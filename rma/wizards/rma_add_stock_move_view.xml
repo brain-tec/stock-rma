@@ -41,7 +41,6 @@
                     <label
                         for="lot_ids"
                         invisible="show_lot_filter == False"
-                        invisible="show_lot_filter == False"
                         string="Selected Lot/Serial Numbers"
                     />
                     <field
