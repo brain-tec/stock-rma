@@ -88,7 +88,11 @@ class RmaOrder(models.Model):
     description = fields.Text()
     comment = fields.Text("Additional Information")
     date_rma = fields.Datetime(
-        string="Order Date", index=True, default=lambda self: self._default_date_rma()
+        compute="_compute_date_rma",
+        inverse="_inverse_date_rma",
+        string="Order Date",
+        index=True,
+        default=lambda self: self._default_date_rma(),
     )
     partner_id = fields.Many2one(
         comodel_name="res.partner", string="Partner", required=True
@@ -120,11 +124,31 @@ class RmaOrder(models.Model):
         tracking=True,
         default=lambda self: self.env.uid,
     )
+    in_route_id = fields.Many2one(
+        "stock.route",
+        string="Inbound Route",
+        domain=[("rma_selectable", "=", True)],
+    )
+    out_route_id = fields.Many2one(
+        "stock.route",
+        string="Outbound Route",
+        domain=[("rma_selectable", "=", True)],
+    )
     in_warehouse_id = fields.Many2one(
         comodel_name="stock.warehouse",
         string="Inbound Warehouse",
-        required=True,
+        required=False,
         default=_default_warehouse_id,
+    )
+    out_warehouse_id = fields.Many2one(
+        comodel_name="stock.warehouse",
+        string="Outbound Warehouse",
+        required=False,
+        default=_default_warehouse_id,
+    )
+    location_id = fields.Many2one(
+        comodel_name="stock.location",
+        string="Send To This Company Location",
     )
     customer_to_supplier = fields.Boolean("The customer will send to the supplier")
     supplier_to_customer = fields.Boolean("The supplier will send to the customer")
@@ -149,6 +173,46 @@ class RmaOrder(models.Model):
         default="draft",
         store=True,
     )
+    operation_default_id = fields.Many2one(
+        comodel_name="rma.operation",
+        required=False,
+        string="Default Operation Type",
+    )
+
+    @api.onchange(
+        "operation_default_id",
+    )
+    def _onchange_operation(self):
+        if self.operation_default_id:
+            self.in_warehouse_id = self.operation_default_id.in_warehouse_id
+            self.out_warehouse_id = self.operation_default_id.out_warehouse_id
+            self.location_id = (
+                self.operation_default_id.location_id or self.in_warehouse_id.lot_rma_id
+            )
+            self.customer_to_supplier = self.operation_default_id.customer_to_supplier
+            self.supplier_to_customer = self.operation_default_id.supplier_to_customer
+            self.in_route_id = self.operation_default_id.in_route_id
+            self.out_route_id = self.operation_default_id.out_route_id
+
+    @api.depends("rma_line_ids.date_rma")
+    def _compute_date_rma(self):
+        """If all order line have same date set date_rma.
+        If no lines, respect value given by the user.
+        """
+        for rma in self:
+            if rma.rma_line_ids:
+                date_rma = rma.rma_line_ids[0].date_rma or False
+                for rma_line in rma.rma_line_ids:
+                    if rma_line.date_rma != date_rma:
+                        date_rma = False
+                        break
+                rma.date_rma = date_rma
+
+    def _inverse_date_rma(self):
+        """When set date_rma set date_rma on all order lines"""
+        for po in self:
+            if po.date_rma:
+                po.rma_line_ids.write({"date_rma": po.date_rma})
 
     @api.constrains("partner_id", "rma_line_ids")
     def _check_partner_id(self):
