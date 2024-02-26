@@ -3,7 +3,7 @@
 
 {
     "name": "RMA (Return Merchandise Authorization)",
-    "version": "16.0.1.0.1",
+    "version": "16.0.1.2.0",
     "license": "LGPL-3",
     "category": "RMA",
     "summary": "Introduces the return merchandise authorization (RMA) process in odoo",
