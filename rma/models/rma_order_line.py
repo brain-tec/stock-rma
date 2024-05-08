@@ -231,6 +231,10 @@ class RmaOrderLine(models.Model):
         for rec in self.filtered(lambda r: r.type == "supplier"):
             rec.rma_line_count = len(rec.customer_rma_id)
 
+    @api.model
+    def _default_date_rma(self):
+        return fields.Datetime.now()
+
     delivery_address_id = fields.Many2one(
         comodel_name="res.partner",
         string="Partner delivery address",
@@ -261,6 +265,9 @@ class RmaOrderLine(models.Model):
         readonly=True,
         states={"draft": [("readonly", False)]},
         help="Reference of the document that produced this rma.",
+    )
+    date_rma = fields.Datetime(
+        string="Order Date", index=True, default=lambda self: self._default_date_rma()
     )
     state = fields.Selection(
         selection=[
@@ -725,7 +732,7 @@ class RmaOrderLine(models.Model):
             )
         if self.lot_id.product_id != self.product_id:
             self.lot_id = False
-        return {"domain": {"lot_id": [("product_id", "=", self.product_id.id)]}}
+        return result
 
     @api.onchange("operation_id")
     def _onchange_operation_id(self):
@@ -734,13 +741,25 @@ class RmaOrderLine(models.Model):
             return result
         self.receipt_policy = self.operation_id.receipt_policy
         self.delivery_policy = self.operation_id.delivery_policy
-        self.in_warehouse_id = self.operation_id.in_warehouse_id
-        self.out_warehouse_id = self.operation_id.out_warehouse_id
-        self.location_id = (
-            self.operation_id.location_id or self.in_warehouse_id.lot_rma_id
+        self.customer_to_supplier = (
+            self.rma_id.customer_to_supplier or self.operation_id.customer_to_supplier
         )
-        self.customer_to_supplier = self.operation_id.customer_to_supplier
-        self.supplier_to_customer = self.operation_id.supplier_to_customer
+        self.supplier_to_customer = (
+            self.rma_id.supplier_to_customer or self.operation_id.supplier_to_customer
+        )
+        self.in_warehouse_id = (
+            self.rma_id.in_warehouse_id or self.operation_id.in_warehouse_id
+        )
+        self.out_warehouse_id = (
+            self.rma_id.out_warehouse_id or self.operation_id.out_warehouse_id
+        )
+        self.location_id = (
+            self.rma_id.location_id
+            or self.operation_id.location_id
+            or self.in_warehouse_id.lot_rma_id
+        )
+        self.in_route_id = self.rma_id.in_route_id or self.operation_id.in_route_id
+        self.out_route_id = self.rma_id.out_route_id or self.operation_id.out_route_id
         return result
 
     @api.depends("operation_id")
