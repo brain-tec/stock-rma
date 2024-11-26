@@ -150,7 +150,7 @@ class TestRma(common.TransactionCase):
     @classmethod
     def _create_product(cls, name):
         return cls.product_product_model.create(
-            {"name": name, "categ_id": cls.category.id, "type": "product"}
+            {"name": name, "categ_id": cls.category.id, "is_storable": True}
         )
 
     @classmethod

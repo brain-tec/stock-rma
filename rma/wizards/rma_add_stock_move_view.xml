@@ -9,8 +9,11 @@
                     <field name="partner_id" string="Customer" />
                 </group>
                 <separator string="Select Stock Moves to add" />
-                <field name="move_ids">
-                    <tree>
+                <field
+                    name="move_ids"
+                    domain="[('picking_id.partner_id', '=', partner_id)]"
+                >
+                    <list>
                         <field name="product_id" />
                         <field name="product_uom_qty" />
                         <field
@@ -30,12 +33,13 @@
                         <field name="create_date" groups="base.group_no_one" />
                         <field name="date" string="Date" groups="base.group_no_one" />
                         <field name="state" />
-                    </tree>
+                    </list>
                 </field>
                 <field name="show_lot_filter" invisible="1" />
                 <field name="lot_domain_ids" widget="many2many_tags" invisible="1" />
                 <div class="oe_grey" invisible="show_lot_filter == False">
-                    The creation of the RMA Lines will be separated according to the lots or serials selected
+                    The creation of the RMA Lines will be separated according to the lots or serials
+                    selected
                 </div>
                 <div class="o_row">
                     <label
@@ -64,9 +68,7 @@
                         name="add_lines"
                         type="object"
                         class="oe_highlight"
-                    />
-                    or
-                    <button
+                    /> or <button
                         name="action_cancel"
                         string="Cancel"
                         class="oe_link"
@@ -146,9 +148,7 @@
                         name="add_lines"
                         type="object"
                         class="oe_highlight"
-                    />
-                    or
-                    <button
+                    /> or <button
                         name="action_cancel"
                         string="Cancel"
                         class="oe_link"

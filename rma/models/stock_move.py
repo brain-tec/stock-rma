@@ -78,7 +78,6 @@ class StockMove(models.Model):
         self,
         need,
         location_id,
-        quant_ids=None,
         lot_id=None,
         package_id=None,
         owner_id=None,
@@ -94,7 +93,6 @@ class StockMove(models.Model):
         return super()._update_reserved_quantity(
             need,
             location_id,
-            quant_ids=quant_ids,
             lot_id=lot_id,
             package_id=package_id,
             owner_id=owner_id,
