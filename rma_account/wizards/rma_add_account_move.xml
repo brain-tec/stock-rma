@@ -14,7 +14,7 @@
                     name="line_ids"
                     domain="[('move_id.partner_id', '=', partner_id)]"
                 >
-                    <tree name="Invoice Lines">
+                    <list name="Invoice Lines">
                         <field name="move_id" />
                         <field name="name" />
                         <field
@@ -28,7 +28,7 @@
                         <field name="discount" groups="base.group_no_one" />
                         <field name="price_subtotal" />
                         <field name="currency_id" invisible="1" />
-                    </tree>
+                    </list>
                 </field>
                 <footer>
                     <button
@@ -36,9 +36,7 @@
                         name="add_lines"
                         type="object"
                         class="oe_highlight"
-                    />
-                    or
-                    <button
+                    /> or <button
                         name="action_cancel"
                         string="Cancel"
                         class="oe_link"
@@ -62,7 +60,7 @@
                     name="line_ids"
                     domain="[('move_id.partner_id', '=', partner_id)]"
                 >
-                    <tree name="Invoice Lines">
+                    <list name="Invoice Lines">
                         <field name="move_id" />
                         <field name="name" />
                         <field
@@ -76,7 +74,7 @@
                         <field name="discount" groups="base.group_no_one" />
                         <field name="price_subtotal" />
                         <field name="currency_id" invisible="1" />
-                    </tree>
+                    </list>
                 </field>
                 <footer>
                     <button
@@ -84,9 +82,7 @@
                         name="add_lines"
                         type="object"
                         class="oe_highlight"
-                    />
-                    or
-                    <button
+                    /> or <button
                         name="action_cancel"
                         string="Cancel"
                         class="oe_link"
