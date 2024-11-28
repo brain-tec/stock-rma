@@ -2,7 +2,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
 
 from odoo.fields import Date, Datetime
-from odoo.tests.common import Form
+from odoo.tests import Form
 
 # pylint: disable=odoo-addons-relative-import
 from odoo.addons.rma_account.tests.test_rma_stock_account import TestRmaStockAccount
