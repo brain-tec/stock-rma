@@ -80,16 +80,18 @@ class RmaRefund(models.TransientModel):
         for wizard in self:
             first = self.item_ids[0]
             values = self._prepare_refund(wizard, first.line_id)
-            new_refund = self.env["account.move"].create(values)
+            default_move_type = (
+                "in_refund" if first.line_id.type == "supplier" else "out_refund",
+            )
+            account_move_model = self.env["account.move"].with_context(
+                default_move_type=default_move_type
+            )
+            new_refund = account_move_model.create(values)
             return new_refund
 
     def invoice_refund(self):
         rma_line_ids = self.env["rma.order.line"].browse(self.env.context["active_ids"])
         for line in rma_line_ids:
-            if line.refund_policy == "no":
-                raise ValidationError(
-                    _("The operation is not refund for at least one line")
-                )
             if line.state != "approved":
                 raise ValidationError(_("RMA %s is not approved") % line.name)
         new_invoice = self.compute_refund()
@@ -104,20 +106,26 @@ class RmaRefund(models.TransientModel):
         result["res_id"] = new_invoice.id
         return result
 
+    def _get_refund_price_unit(self, rma):
+        if rma.operation_id.refund_free_of_charge:
+            return 0.0
+        price_unit = rma.price_unit
+        # If this references a previous invoice/bill, use the same unit price
+        if rma.account_move_line_id:
+            price_unit = rma.account_move_line_id.price_unit
+        return price_unit
+
+    def _get_refund_currency(self, rma):
+        currency = rma.currency_id
+        if rma.account_move_line_id:
+            currency = rma.account_move_line_id.currency_id
+        return currency
+
     @api.model
     def prepare_refund_line(self, item):
-        accounts = item.product.product_tmpl_id._get_product_accounts()
-        if item.line_id.type == "customer":
-            account = accounts["stock_output"]
-        else:
-            account = accounts["stock_input"]
-        if not account:
-            raise ValidationError(_("Accounts are not configured for this product."))
-
         values = {
             "name": item.line_id.name or item.rma_id.name,
-            "account_id": account.id,
-            "price_unit": item.line_id.price_unit,
+            "price_unit": self._get_refund_price_unit(item.line_id),
             "product_uom_id": item.line_id.uom_id.id,
             "product_id": item.product.id,
             "rma_line_id": item.line_id.id,
@@ -138,16 +146,22 @@ class RmaRefund(models.TransientModel):
             journal = self.env["account.journal"].search(
                 [("type", "=", "purchase")], limit=1
             )
+        rma_number_ref = rma_line.rma_id.name or rma_line.name
+        reason = wizard.description
+        if reason == rma_number_ref:
+            reason = False
+        ref = _("Refund created by %s, %s") % (rma_number_ref, reason)
+        if not reason:
+            ref = _("Refund created by %s") % rma_number_ref
         values = {
-            "name": rma_line.rma_id.name or rma_line.name,
-            "payment_reference": rma_line.rma_id.name or rma_line.name,
-            "invoice_origin": rma_line.rma_id.name or rma_line.name,
-            "ref": False,
+            "payment_reference": rma_number_ref,
+            "invoice_origin": rma_number_ref,
+            "ref": ref,
             "move_type": "in_refund" if rma_line.type == "supplier" else "out_refund",
             "journal_id": journal.id,
             "fiscal_position_id": rma_line.partner_id.property_account_position_id.id,
             "state": "draft",
-            "currency_id": rma_line.currency_id.id,
+            "currency_id": self._get_refund_currency(rma_line),
             "date": wizard.date,
             "invoice_date": wizard.date_invoice,
             "partner_id": rma_line.invoice_address_id.id or rma_line.partner_id.id,

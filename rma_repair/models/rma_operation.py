@@ -1,5 +1,5 @@
 # Copyright 2020 ForgeFlow S.L.
-# License LGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 from odoo import fields, models
 
@@ -18,4 +18,21 @@ class RmaOperation(models.Model):
     )
     delivery_policy = fields.Selection(
         selection_add=[("repair", "Based on Repair Quantities")]
+    )
+    repair_location_id = fields.Many2one(
+        string="Repair Location",
+        comodel_name="stock.location",
+        help="Indicate here the source location of the product to be repaired",
+    )
+    repair_invoice_method = fields.Selection(
+        string="Repair Invoice Method",
+        selection=[
+            ("none", "No Invoice"),
+            ("b4repair", "Before Repair"),
+            ("after_repair", "After Repair"),
+        ],
+        help="Selecting 'Before Repair' or 'After Repair' will allow you "
+        "to generate invoice before or after the repair is done "
+        "respectively. 'No invoice' means you don't want to generate "
+        "invoice for this repair order.",
     )

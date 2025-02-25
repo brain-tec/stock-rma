@@ -3,12 +3,12 @@
 
 {
     "name": "RMA Account",
-    "version": "14.0.1.0.0",
+    "version": "14.0.1.1.0",
     "license": "LGPL-3",
     "category": "RMA",
     "summary": "Integrates RMA with Invoice Processing",
     "author": "ForgeFlow",
-    "website": "https://github.com/OCA/https://github.com/ForgeFlow/stock-rma",
+    "website": "https://github.com/ForgeFlow/stock-rma",
     "depends": ["stock_account", "rma"],
     "data": [
         "security/ir.model.access.csv",

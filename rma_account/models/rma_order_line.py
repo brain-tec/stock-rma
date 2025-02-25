@@ -16,7 +16,7 @@ class RmaOrderLine(models.Model):
         return self.env["res.partner"]
 
     @api.depends(
-        "refund_line_ids", "refund_line_ids.move_id.state", "refund_policy", "type"
+        "move_line_ids", "move_line_ids.move_id.state", "refund_policy", "type"
     )
     def _compute_qty_refunded(self):
         for rec in self:
@@ -27,8 +27,8 @@ class RmaOrderLine(models.Model):
             )
 
     @api.depends(
-        "refund_line_ids",
-        "refund_line_ids.move_id.state",
+        "move_line_ids",
+        "move_line_ids.move_id.state",
         "refund_policy",
         "move_ids",
         "move_ids.state",
@@ -68,10 +68,22 @@ class RmaOrderLine(models.Model):
         readonly=True,
         states={"draft": [("readonly", False)]},
     )
+    move_line_ids = fields.One2many(
+        comodel_name="account.move.line",
+        inverse_name="rma_line_id",
+        string="Journal Items",
+        copy=False,
+        index=True,
+        readonly=True,
+    )
     refund_line_ids = fields.One2many(
         comodel_name="account.move.line",
         inverse_name="rma_line_id",
         string="Refund Lines",
+        domain=[
+            ("move_id.move_type", "in", ["in_refund", "out_refund"]),
+            ("exclude_from_invoice_tab", "=", False),
+        ],
         copy=False,
         index=True,
         readonly=True,
@@ -93,8 +105,7 @@ class RmaOrderLine(models.Model):
         string="Refund Policy",
         required=True,
         default="no",
-        readonly=True,
-        states={"draft": [("readonly", False)]},
+        readonly=False,
     )
     qty_to_refund = fields.Float(
         string="Qty To Refund",
@@ -112,6 +123,20 @@ class RmaOrderLine(models.Model):
         compute="_compute_qty_refunded",
         store=True,
     )
+
+    commercial_partner_id = fields.Many2one(
+        "res.partner",
+        string="Commercial Entity",
+        store=True,
+        readonly=True,
+        compute="_compute_commercial_partner_id",
+        ondelete="restrict",
+    )
+
+    @api.depends("partner_id")
+    def _compute_commercial_partner_id(self):
+        for rma_line in self:
+            rma_line.commercial_partner_id = rma_line.partner_id.commercial_partner_id
 
     @api.onchange("product_id", "partner_id")
     def _onchange_product_id(self):
@@ -273,12 +298,12 @@ class RmaOrderLine(models.Model):
         }
 
     def action_view_refunds(self):
-        move_ids = self.mapped("refund_line_ids.move_id").ids
+        moves = self.mapped("refund_line_ids.move_id")
         form_view_ref = self.env.ref("account.view_move_form", False)
         tree_view_ref = self.env.ref("account.view_move_tree", False)
 
         return {
-            "domain": [("id", "in", move_ids)],
+            "domain": [("id", "in", moves.ids)],
             "name": "Refunds",
             "res_model": "account.move",
             "type": "ir.actions.act_window",
@@ -299,3 +324,89 @@ class RmaOrderLine(models.Model):
             return res
         else:
             return super(RmaOrderLine, self).name_get()
+
+    def _stock_account_anglo_saxon_reconcile_valuation(self):
+        for rma in self:
+            prod = rma.product_id
+            if rma.product_id.valuation != "real_time":
+                continue
+            if not rma.company_id.anglo_saxon_accounting:
+                continue
+            product_accounts = prod.product_tmpl_id._get_product_accounts()
+            if rma.type == "customer":
+                product_interim_account = product_accounts["stock_output"]
+            else:
+                product_interim_account = product_accounts["stock_input"]
+            if product_interim_account.reconcile:
+                # Get the in and out moves
+                amls = self.env["account.move.line"].search(
+                    [
+                        ("rma_line_id", "=", rma.id),
+                        ("account_id", "=", product_interim_account.id),
+                        ("parent_state", "=", "posted"),
+                        ("reconciled", "=", False),
+                    ]
+                )
+                amls |= rma.move_ids.mapped(
+                    "stock_valuation_layer_ids.account_move_id.line_ids"
+                )
+                # Search for anglo-saxon lines linked to the product in the journal entry.
+                amls = amls.filtered(
+                    lambda line: line.product_id == prod
+                    and line.account_id == product_interim_account
+                    and not line.reconciled
+                )
+                # Reconcile.
+                amls.reconcile()
+
+    def _get_price_unit(self):
+        self.ensure_one()
+        price_unit = super(RmaOrderLine, self)._get_price_unit()
+        if self.reference_move_id:
+            move = self.reference_move_id
+            layers = move.sudo().stock_valuation_layer_ids
+            if layers:
+                price_unit = sum(layers.mapped("value")) / sum(
+                    layers.mapped("quantity")
+                )
+                price_unit = price_unit
+        elif self.account_move_line_id and self.type == "supplier":
+            # We get the cost from the original invoice line
+            price_unit = self.account_move_line_id.price_unit
+        return price_unit
+
+    def _refund_at_zero_cost(self):
+        make_refund = (
+            self.env["rma.refund"]
+            .with_context(
+                {
+                    "customer": True,
+                    "active_ids": self.ids,
+                    "active_model": "rma.order.line",
+                }
+            )
+            .create({"description": "RMA Anglosaxon Regularisation"})
+        )
+        for item in make_refund.item_ids:
+            item.qty_to_refund = item.line_id.qty_received - item.line_id.qty_refunded
+        action_refund = make_refund.invoice_refund()
+        refund_id = action_refund.get("res_id", False)
+        if refund_id:
+            refund = self.env["account.move"].browse(refund_id)
+            refund._post()
+
+    def _check_refund_zero_cost(self):
+        """
+        In the scenario where a company uses anglo-saxon accounting, if you receive
+        products from a customer and don't expect to refund the customer but send a
+        replacement unit you still need to create a debit entry on the
+        Stock Interim (Delivered) account. In order to do this the best approach is
+        to create a customer refund from the RMA, but set as free of charge
+        (price unit = 0). The refund will be 0, but the Stock Interim (Delivered)
+        account will be posted anyways.
+        """
+        # For some reason api.depends on qty_received is not working. Using the
+        # _account_entry_move method in stock move as trigger then
+        for rec in self.filtered(lambda l: l.operation_id.automated_refund):
+            if rec.qty_received > rec.qty_refunded:
+                rec._refund_at_zero_cost()

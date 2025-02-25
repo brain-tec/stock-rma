@@ -12,9 +12,14 @@
                     <field name="name" />
                     <field name="partner_id" />
                     <field name="product_id" />
-                    <field name="lot_id" groups="stock.group_production_lot" />
+                    <field
+                        name="lot_id"
+                        groups="stock.group_production_lot"
+                        context="{'default_product_id': product_id,}"
+                    />
                     <field name="rma_id" groups="rma.group_rma_groups" />
                     <field name="origin" />
+                    <field name="date_rma" />
                     <field name="operation_id" />
                     <field name="supplier_address_id" />
                     <field name="uom_id" groups="uom.group_uom" />
@@ -36,9 +41,14 @@
                     <field name="name" />
                     <field name="partner_id" />
                     <field name="product_id" />
-                    <field name="lot_id" groups="stock.group_production_lot" />
+                    <field
+                        name="lot_id"
+                        groups="stock.group_production_lot"
+                        context="{'default_product_id': product_id,}"
+                    />
                     <field name="rma_id" groups="rma.group_rma_groups" />
                     <field name="origin" />
+                    <field name="date_rma" />
                     <field name="operation_id" domain="[('type','=','supplier')]" />
                     <field name="uom_id" groups="uom.group_uom" />
                     <field name="product_qty" />
@@ -78,13 +88,32 @@
                             groups="rma.group_rma_customer_user"
                         />
                         <button
+                            name="action_rma_approve"
+                            type="object"
+                            string="Back to Approved"
+                            attrs="{'invisible':[('state', '!=', 'done')]}"
+                            groups="rma.group_rma_customer_user"
+                        />
+                        <button
                             name="action_rma_done"
                             type="object"
                             string="Done"
-                            attrs="{'invisible':[('state', 'in', ('done', 'draft'))]}"
+                            attrs="{'invisible':[('state', 'in', ('done', 'draft', 'canceled'))]}"
                             groups="rma.group_rma_customer_user"
                         />
-                        <field name="state" widget="statusbar" nolabel="1" />
+                        <button
+                            name="action_rma_cancel"
+                            type="object"
+                            string="Cancel"
+                            attrs="{'invisible':[('state', 'in', ('done', 'canceled'))]}"
+                            groups="rma.group_rma_customer_user"
+                        />
+                        <field
+                            name="state"
+                            widget="statusbar"
+                            statusbar_visible="draft,to_approve,approved,done"
+                            nolabel="1"
+                        />
                     </header>
                     <sheet>
                         <div name="button_box" class="oe_button_box">
@@ -93,6 +122,7 @@
                                 name="action_view_in_shipments"
                                 class="oe_stat_button"
                                 icon="fa-truck"
+                                attrs="{'invisible': [('in_shipment_count', '=', 0)]}"
                                 groups="stock.group_stock_user"
                             >
                                 <field
@@ -106,6 +136,7 @@
                                 name="action_view_out_shipments"
                                 class="oe_stat_button"
                                 icon="fa-truck"
+                                attrs="{'invisible': [('out_shipment_count', '=', 0)]}"
                                 groups="stock.group_stock_user"
                             >
                                 <field
@@ -126,6 +157,7 @@
                                 class="oe_stat_button"
                                 icon="fa-link"
                                 groups="stock.group_stock_user"
+                                attrs="{'invisible': [('rma_line_count', '=', 0)]}"
                             >
                                 <field
                                     name="rma_line_count"
@@ -161,6 +193,7 @@
                             </group>
                             <group>
                                 <group name="contact">
+                                    <field name="date_rma" />
                                     <field name="requested_by" readonly="1" />
                                     <field name="assigned_to" />
                                     <field name="type" invisible="1" />
@@ -176,6 +209,7 @@
                                     name="lot_id"
                                     groups="stock.group_production_lot"
                                     attrs="{'required': [('product_tracking', 'in', ('serial', 'lot'))]}"
+                                    context="{'default_product_id': product_id,}"
                                 />
                                 <field name="under_warranty" />
                             </group>
@@ -210,12 +244,18 @@
                         <notebook>
                             <page name="quantities" string="Quantities">
                                 <group name="quantities" col="4" string="Quantities">
-                                    <group name="receive">
+                                    <group
+                                        name="receive"
+                                        attrs="{'invisible': [('receipt_policy', '=', 'no')]}"
+                                    >
                                         <field name="qty_to_receive" />
                                         <field name="qty_incoming" />
                                         <field name="qty_received" />
                                     </group>
-                                    <group name="deliver">
+                                    <group
+                                        name="deliver"
+                                        attrs="{'invisible': [('delivery_policy', '=', 'no')]}"
+                                    >
                                         <field name="qty_to_deliver" />
                                         <field name="qty_outgoing" />
                                         <field name="qty_delivered" />
@@ -271,7 +311,11 @@
                                     />
                                 </group>
                             </page>
-                            <page name="stock" string="Stock Moves">
+                            <page
+                                name="stock"
+                                string="Stock Moves"
+                                attrs="{'invisible': [('move_ids', '=', [])]}"
+                            >
                                 <field name="move_ids" nolabel="1" readonly="1" />
                             </page>
                             <page name="other" string="Other Info">
@@ -351,6 +395,7 @@
                     <field name="assigned_to" />
                     <field name="product_id" />
                     <field name="lot_id" />
+                    <field name="date_rma" />
                     <separator />
                     <filter
                         name="assigned_to"
@@ -451,6 +496,27 @@
             <field name="view_id" ref="view_rma_line_supplier_form" />
             <field name="act_window_id" ref="action_rma_supplier_lines" />
         </record>
+
+         <record model="ir.actions.server" id="action_request_approve_rma_order_line">
+            <field name="name">Request Approval</field>
+            <field name="model_id" ref="rma.model_rma_order_line" />
+            <field name="binding_model_id" ref="rma.model_rma_order_line" />
+            <field name="state">code</field>
+            <field name="code">
+if records.filtered(lambda x: x.state == "draft"):
+    records.filtered(lambda x: x.state == "draft").action_rma_to_approve()
+            </field>
+     </record>
+
+        <record model="ir.actions.server" id="action_request_cancel_rma_order_line">
+            <field name="name">Cancel</field>
+            <field name="model_id" ref="rma.model_rma_order_line" />
+            <field name="binding_model_id" ref="rma.model_rma_order_line" />
+            <field name="state">code</field>
+            <field name="code">
+    records.action_rma_cancel()
+            </field>
+     </record>
 
     </data>
 </odoo>

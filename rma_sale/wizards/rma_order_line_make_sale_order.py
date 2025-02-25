@@ -29,6 +29,7 @@ class RmaLineMakeSaleOrder(models.TransientModel):
 
     @api.model
     def _prepare_item(self, line):
+        free_of_charge_rma_sale = line.operation_id.free_of_charge_rma_sale
         return {
             "line_id": line.id,
             "product_id": line.product_id.id,
@@ -37,6 +38,7 @@ class RmaLineMakeSaleOrder(models.TransientModel):
             "rma_id": line.rma_id.id,
             "out_warehouse_id": line.out_warehouse_id.id,
             "product_uom_id": line.uom_id.id,
+            "free_of_charge": free_of_charge_rma_sale,
         }
 
     @api.model
@@ -72,11 +74,21 @@ class RmaLineMakeSaleOrder(models.TransientModel):
         if not self.partner_id:
             raise exceptions.Warning(_("Enter a customer."))
         customer = self.partner_id
+        auto = self.env["account.fiscal.position"].search(
+            [("auto_apply", "=", True), ("country_id", "=", customer.country_id.id)],
+            limit=1,
+        )
+        fiscal_position = False
+        if customer.property_account_position_id:
+            fiscal_position = customer.property_account_position_id
+        elif auto:
+            fiscal_position = auto
         data = {
             "origin": line.name,
             "partner_id": customer.id,
             "warehouse_id": line.out_warehouse_id.id,
             "company_id": line.company_id.id,
+            "fiscal_position_id": fiscal_position.id if fiscal_position else False,
         }
 
         return data
@@ -85,7 +97,7 @@ class RmaLineMakeSaleOrder(models.TransientModel):
     def _prepare_sale_order_line(self, so, item):
         product = item.product_id
         vals = {
-            "name": product.name,
+            "name": item.name,
             "order_id": so.id,
             "product_id": product.id,
             "product_uom": product.uom_po_id.id,
@@ -95,6 +107,11 @@ class RmaLineMakeSaleOrder(models.TransientModel):
         if item.free_of_charge:
             vals["price_unit"] = 0.0
         return vals
+
+    def _post_process_sale_order(self, item, sale_line):
+        line = item.line_id
+        if line.operation_id.auto_confirm_rma_sale:
+            sale_line.order_id.action_confirm()
 
     def make_sale_order(self):
         res = []
@@ -115,7 +132,8 @@ class RmaLineMakeSaleOrder(models.TransientModel):
                 sale.name = sale.name + " - " + line.name
 
             so_line_data = self._prepare_sale_order_line(sale, item)
-            so_line_obj.create(so_line_data)
+            sale_line = so_line_obj.create(so_line_data)
+            self._post_process_sale_order(item, sale_line)
             res.append(sale.id)
 
         action = self.env.ref("sale.action_orders")

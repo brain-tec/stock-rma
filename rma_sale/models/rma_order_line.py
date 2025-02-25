@@ -81,26 +81,41 @@ class RmaOrderLine(models.Model):
         string="Sale Policy",
         default="no",
         required=True,
-        readonly=True,
-        states={"draft": [("readonly", False)]},
+        readonly=False,
     )
     sales_count = fields.Integer(compute="_compute_sales_count", string="# of Sales")
 
-    @api.onchange("product_id", "partner_id")
-    def _onchange_product_id(self):
-        """Domain for sale_line_id is computed here to make it dynamic."""
-        res = super(RmaOrderLine, self)._onchange_product_id()
-        if not res.get("domain"):
-            res["domain"] = {}
-        domain = [
-            "|",
-            ("order_id.partner_id", "=", self.partner_id.id),
-            ("order_id.partner_id", "child_of", self.partner_id.id),
-        ]
-        if self.product_id:
-            domain.append(("product_id", "=", self.product_id.id))
-        res["domain"]["sale_line_id"] = domain
-        return res
+    sale_line_domain_ids = fields.Many2many(
+        comodel_name="sale.order.line", compute="_compute_sale_line_domain"
+    )
+
+    def _get_stock_move_reference(self):
+        self.ensure_one()
+        move = self.reference_move_id
+        if self.sale_line_id:
+            # CHECK ME: backorder cases can be more than one move
+            sale_moves = self.sale_line_id.move_ids.filtered(
+                lambda x: x.location_dest_id.usage == "customer" and x.state == "done"
+            )
+            if sale_moves:
+                return sale_moves
+        return move
+
+    @api.depends("product_id", "partner_id")
+    def _compute_sale_line_domain(self):
+        line_model = self.env["sale.order.line"]
+        for rec in self:
+            domain = []
+            if rec.partner_id:
+                domain = [
+                    "|",
+                    ("order_id.partner_id", "=", rec.partner_id.id),
+                    ("order_id.partner_id", "child_of", rec.partner_id.id),
+                ]
+            if rec.product_id:
+                domain.append(("product_id", "=", rec.product_id.id))
+            lines = domain and line_model.search(domain) or line_model.browse()
+            rec.sale_line_domain_ids = lines.ids
 
     @api.onchange("operation_id")
     def _onchange_operation_id(self):
@@ -204,6 +219,19 @@ class RmaOrderLine(models.Model):
         result["domain"] = [("id", "in", order_ids)]
         return result
 
+    def action_view_origin_sale_order(self):
+        action = self.env.ref("sale.action_orders_salesteams")
+        result = action.sudo().read()[0]
+        order_ids = self.sale_id.ids
+        result["domain"] = [("id", "in", order_ids)]
+        return result
+
+    def action_rma_cancel(self):
+        res = super().action_rma_cancel()
+        for line in self.filtered("sale_line_ids"):
+            line.sale_line_ids.mapped("order_id").action_cancel()
+        return res
+
     def _get_rma_sold_qty(self):
         self.ensure_one()
         qty = 0.0
@@ -212,3 +240,33 @@ class RmaOrderLine(models.Model):
         ):
             qty += sale_line.product_uom_qty
         return qty
+
+    def _get_price_unit(self):
+        self.ensure_one()
+        price_unit = super(RmaOrderLine, self)._get_price_unit()
+        if self.sale_line_id:
+            moves = self.sale_line_id.move_ids.filtered(
+                lambda x: x.state == "done"
+                and x.location_id.usage in ("internal", "supplier")
+                and x.location_dest_id.usage == "customer"
+            )
+            if moves:
+                layers = moves.sudo().mapped("stock_valuation_layer_ids")
+                if layers:
+                    price_unit = sum(layers.mapped("value")) / sum(
+                        layers.mapped("quantity")
+                    )
+        elif self.account_move_line_id:
+            sale_lines = self.account_move_line_id.sale_line_ids
+            moves = sale_lines.mapped("move_ids").filtered(
+                lambda x: x.state == "done"
+                and x.location_id.usage in ("internal", "supplier")
+                and x.location_dest_id.usage == "customer"
+            )
+            if moves:
+                layers = moves.sudo().mapped("stock_valuation_layer_ids")
+                if layers:
+                    price_unit = sum(layers.mapped("value")) / sum(
+                        layers.mapped("quantity")
+                    )
+        return price_unit

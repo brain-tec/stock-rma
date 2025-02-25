@@ -1,5 +1,5 @@
 # Copyright 2020-21 ForgeFlow S.L.
-# License LGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 from odoo import api, fields, models
 
@@ -129,6 +129,12 @@ class RmaOrderLine(models.Model):
             result["views"] = [(res and res.id or False, "form")]
             result["res_id"] = repair_ids[0]
         return result
+
+    def action_rma_cancel(self):
+        res = super().action_rma_cancel()
+        for line in self:
+            line.repair_ids.action_repair_cancel()
+        return res
 
     def _get_rma_repaired_qty(self):
         self.ensure_one()

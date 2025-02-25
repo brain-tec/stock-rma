@@ -1,15 +1,14 @@
-# © 2017 Eficent Business and IT Consulting Services S.L.
+# Copyright 2017-2022 ForgeFlow S.L.
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
-
 {
     "name": "RMA Purchase",
-    "version": "14.0.1.0.0",
+    "version": "14.0.1.0.1",
     "category": "RMA",
     "summary": "RMA from PO",
     "license": "LGPL-3",
-    "author": "Eficent, Odoo Community Association (OCA)",
-    "website": "https://github.com/OCA/https://github.com/ForgeFlow/stock-rma",
-    "depends": ["rma_account", "purchase"],
+    "author": "ForgeFlow, Odoo Community Association (OCA)",
+    "website": "https://github.com/ForgeFlow/stock-rma",
+    "depends": ["rma_account", "purchase_stock"],
     "data": [
         "wizards/rma_order_line_make_purchase_order_view.xml",
         "security/ir.model.access.csv",
@@ -19,4 +18,5 @@
         "wizards/rma_add_purchase.xml",
     ],
     "installable": True,
+    "auto_install": True,
 }

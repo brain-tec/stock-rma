@@ -13,6 +13,7 @@ class RmaOrderLine(models.Model):
     _name = "rma.order.line"
     _description = "RMA"
     _inherit = ["mail.thread"]
+    _order = "id desc"
 
     @api.model
     def _get_default_type(self):
@@ -42,39 +43,82 @@ class RmaOrderLine(models.Model):
             self.partner_id.address_get(["delivery"])["delivery"]
         )
 
+    @api.model
+    def _get_in_pickings(self):
+        # We consider an in move one where the first origin is outside
+        # of the company and the final destination is outside. In case
+        # of 2 or 3 step pickings, we should categorize as in shipments
+        # even when they are technically internal transfers.
+        pickings = self.env["stock.picking"]
+        for move in self.move_ids:
+            first_usage = move._get_first_usage()
+            last_usage = move._get_last_usage()
+            if last_usage == "internal" and first_usage != "internal":
+                pickings |= move.picking_id
+            elif last_usage == "supplier" and first_usage == "customer":
+                pickings |= move.picking_id
+        return pickings
+
+    @api.model
+    def _get_in_moves(self):
+        moves = self.env["stock.move"]
+        for move in self.move_ids:
+            first_usage = move._get_first_usage()
+            last_usage = move._get_last_usage()
+            if last_usage == "internal" and first_usage != "internal":
+                moves |= move
+            elif last_usage == "supplier" and first_usage == "customer":
+                moves |= moves
+        return moves
+
+    @api.model
+    def _get_out_moves(self):
+        moves = self.env["stock.move"]
+        for move in self.move_ids:
+            first_usage = move._get_first_usage()
+            last_usage = move._get_last_usage()
+            if first_usage == "internal" and last_usage != "internal":
+                moves |= move
+            elif first_usage == "supplier" and last_usage == "customer":
+                moves |= moves
+        return moves
+
+    @api.model
+    def _get_out_pickings(self):
+        pickings = self.env["stock.picking"]
+        for move in self.move_ids:
+            first_usage = move._get_first_usage()
+            last_usage = move._get_last_usage()
+            if first_usage in ("internal", "production") and last_usage != "internal":
+                pickings |= move.picking_id
+            elif last_usage == "customer" and first_usage == "supplier":
+                pickings |= move.picking_id
+        return pickings
+
     def _compute_in_shipment_count(self):
         for line in self:
-            picking_ids = []
-            for move in line.move_ids:
-                if move.location_dest_id.usage == "internal":
-                    picking_ids.append(move.picking_id.id)
-                else:
-                    if line.customer_to_supplier:
-                        picking_ids.append(move.picking_id.id)
-            shipments = list(set(picking_ids))
-            line.in_shipment_count = len(shipments)
+            pickings = line._get_in_pickings()
+            line.in_shipment_count = len(pickings)
 
     def _compute_out_shipment_count(self):
-        picking_ids = []
         for line in self:
-            for move in line.move_ids:
-                if move.location_dest_id.usage in ("supplier", "customer"):
-                    if not line.customer_to_supplier:
-                        picking_ids.append(move.picking_id.id)
-            shipments = list(set(picking_ids))
-            line.out_shipment_count = len(shipments)
+            pickings = line._get_out_pickings()
+            line.out_shipment_count = len(pickings)
 
     def _get_rma_move_qty(self, states, direction="in"):
         for rec in self:
             product_obj = self.env["uom.uom"]
             qty = 0.0
             if direction == "in":
-                op = ops["="]
+                moves = rec._get_in_moves()
             else:
-                op = ops["!="]
-            for move in rec.move_ids.filtered(
-                lambda m: m.state in states and op(m.location_id.usage, rec.type)
-            ):
+                moves = rec._get_out_moves()
+            for move in moves.filtered(lambda m: m.state in states):
+                # If the move is part of a chain don't count it
+                if direction == "out" and move.move_orig_ids:
+                    continue
+                elif direction == "in" and move.move_dest_ids:
+                    continue
                 qty += product_obj._compute_quantity(move.product_uom_qty, rec.uom_id)
             return qty
 
@@ -173,6 +217,10 @@ class RmaOrderLine(models.Model):
         for rec in self.filtered(lambda r: r.type == "supplier"):
             rec.rma_line_count = len(rec.customer_rma_id)
 
+    @api.model
+    def _default_date_rma(self):
+        return fields.Datetime.now()
+
     delivery_address_id = fields.Many2one(
         comodel_name="res.partner",
         string="Partner delivery address",
@@ -204,12 +252,16 @@ class RmaOrderLine(models.Model):
         states={"draft": [("readonly", False)]},
         help="Reference of the document that produced this rma.",
     )
+    date_rma = fields.Datetime(
+        string="Order Date", index=True, default=lambda self: self._default_date_rma()
+    )
     state = fields.Selection(
         selection=[
             ("draft", "Draft"),
             ("to_approve", "To Approve"),
             ("approved", "Approved"),
             ("done", "Done"),
+            ("canceled", "Canceled"),
         ],
         string="State",
         default="draft",
@@ -219,8 +271,8 @@ class RmaOrderLine(models.Model):
         comodel_name="rma.operation",
         required=True,
         string="Operation",
-        readonly=True,
-        states={"draft": [("readonly", False)]},
+        readonly=False,
+        tracking=True,
     )
     assigned_to = fields.Many2one(
         comodel_name="res.users",
@@ -275,7 +327,10 @@ class RmaOrderLine(models.Model):
         states={"draft": [("readonly", False)]},
     )
     price_unit = fields.Monetary(
-        string="Price Unit", readonly=True, states={"draft": [("readonly", False)]}
+        string="Unit cost",
+        readonly=True,
+        states={"draft": [("readonly", False)]},
+        help="Unit cost of the items under RMA",
     )
     in_shipment_count = fields.Integer(
         compute="_compute_in_shipment_count", string="# of Shipments"
@@ -330,8 +385,7 @@ class RmaOrderLine(models.Model):
         required=True,
         string="Receipts Policy",
         default="no",
-        readonly=True,
-        states={"draft": [("readonly", False)]},
+        readonly=False,
     )
     delivery_policy = fields.Selection(
         [
@@ -342,9 +396,8 @@ class RmaOrderLine(models.Model):
         required=True,
         string="Delivery Policy",
         default="no",
-        readonly=True,
+        readonly=False,
         ondelete="cascade",
-        states={"draft": [("readonly", False)]},
     )
     in_route_id = fields.Many2one(
         "stock.location.route",
@@ -470,6 +523,10 @@ class RmaOrderLine(models.Model):
         string="Under Warranty?", readonly=True, states={"draft": [("readonly", False)]}
     )
 
+    def _get_stock_move_reference(self):
+        self.ensure_one()
+        return self.reference_move_id
+
     def _prepare_rma_line_from_stock_move(self, sm, lot=False):
         if not self.type:
             self.type = self._get_default_type()
@@ -576,7 +633,19 @@ class RmaOrderLine(models.Model):
             self.reference_move_id = False
         return True
 
+    def _check_production_lot_assigned(self):
+        for rec in self:
+            if rec.product_id.tracking == "serial" and rec.product_qty != 1:
+                raise ValidationError(
+                    _(
+                        "Product %s has serial tracking configuration, "
+                        "quantity to receive should be 1"
+                    )
+                    % (rec.product_id.display_name)
+                )
+
     def action_rma_to_approve(self):
+        self._check_production_lot_assigned()
         self.write({"state": "to_approve"})
         for rec in self:
             if rec.product_id.rma_approval_policy == "one_step":
@@ -584,8 +653,6 @@ class RmaOrderLine(models.Model):
         return True
 
     def action_rma_draft(self):
-        if self.in_shipment_count or self.out_shipment_count:
-            raise UserError(_("You cannot reset to draft a RMA with related pickings."))
         self.write({"state": "draft"})
         return True
 
@@ -595,6 +662,25 @@ class RmaOrderLine(models.Model):
 
     def action_rma_done(self):
         self.write({"state": "done"})
+        return True
+
+    def check_cancel(self):
+        for move in self.move_ids:
+            if move.state == "done":
+                raise UserError(
+                    _("Unable to cancel %s as some receptions have already been done.")
+                    % (self.name)
+                )
+
+    def action_rma_cancel(self):
+        for order in self:
+            order.check_cancel()
+            order.write({"state": "canceled"})
+            order.move_ids._action_cancel()
+            shipments = order._get_in_pickings()
+            shipments |= order._get_out_pickings()
+            for ship in shipments:
+                ship.action_cancel()
         return True
 
     @api.model
@@ -610,15 +696,24 @@ class RmaOrderLine(models.Model):
                 )
         return super(RmaOrderLine, self).create(vals)
 
+    def _get_price_unit(self):
+        """The price unit corresponds to the cost of that product"""
+        self.ensure_one()
+        if self.reference_move_id:
+            price_unit = self.reference_move_id.price_unit
+        else:
+            price_unit = self.product_id.with_company(self.company_id).standard_price
+        return price_unit
+
     @api.onchange("product_id")
     def _onchange_product_id(self):
         result = {}
         if not self.product_id:
             return result
         self.uom_id = self.product_id.uom_id.id
-        self.price_unit = self.product_id.standard_price
         if not self.type:
             self.type = self._get_default_type()
+        self.price_unit = self._get_price_unit()
         if self.type == "customer":
             self.operation_id = (
                 self.product_id.rma_customer_operation_id
@@ -640,15 +735,25 @@ class RmaOrderLine(models.Model):
             return result
         self.receipt_policy = self.operation_id.receipt_policy
         self.delivery_policy = self.operation_id.delivery_policy
-        self.in_warehouse_id = self.operation_id.in_warehouse_id
-        self.out_warehouse_id = self.operation_id.out_warehouse_id
-        self.location_id = (
-            self.operation_id.location_id or self.in_warehouse_id.lot_rma_id
+        self.customer_to_supplier = (
+            self.rma_id.customer_to_supplier or self.operation_id.customer_to_supplier
         )
-        self.customer_to_supplier = self.operation_id.customer_to_supplier
-        self.supplier_to_customer = self.operation_id.supplier_to_customer
-        self.in_route_id = self.operation_id.in_route_id
-        self.out_route_id = self.operation_id.out_route_id
+        self.supplier_to_customer = (
+            self.rma_id.supplier_to_customer or self.operation_id.supplier_to_customer
+        )
+        self.in_warehouse_id = (
+            self.rma_id.in_warehouse_id or self.operation_id.in_warehouse_id
+        )
+        self.out_warehouse_id = (
+            self.rma_id.out_warehouse_id or self.operation_id.out_warehouse_id
+        )
+        self.location_id = (
+            self.rma_id.location_id
+            or self.operation_id.location_id
+            or self.in_warehouse_id.lot_rma_id
+        )
+        self.in_route_id = self.rma_id.in_route_id or self.operation_id.in_route_id
+        self.out_route_id = self.rma_id.out_route_id or self.operation_id.out_route_id
         return result
 
     @api.onchange("customer_to_supplier", "type")
@@ -668,62 +773,51 @@ class RmaOrderLine(models.Model):
     def action_view_in_shipments(self):
         action = self.env.ref("stock.action_picking_tree_all")
         result = action.sudo().read()[0]
-        picking_ids = []
+        shipments = self.env["stock.picking"]
         for line in self:
-            for move in line.move_ids:
-                if move.location_dest_id.usage == "internal":
-                    picking_ids.append(move.picking_id.id)
-                else:
-                    if line.customer_to_supplier:
-                        picking_ids.append(move.picking_id.id)
-
-        shipments = list(set(picking_ids))
+            shipments |= line._get_in_pickings()
         # choose the view_mode accordingly
         if len(shipments) != 1:
-            result["domain"] = "[('id', 'in', " + str(shipments) + ")]"
+            result["domain"] = "[('id', 'in', " + str(shipments.ids) + ")]"
         elif len(shipments) == 1:
             res = self.env.ref("stock.view_picking_form", False)
             result["views"] = [(res and res.id or False, "form")]
-            result["res_id"] = shipments[0]
+            result["res_id"] = shipments.ids[0]
         return result
 
     def action_view_out_shipments(self):
         action = self.env.ref("stock.action_picking_tree_all")
         result = action.sudo().read()[0]
-        picking_ids = []
+        shipments = self.env["stock.picking"]
         for line in self:
-            for move in line.move_ids:
-                if move.location_dest_id.usage in ("supplier", "customer"):
-                    if not line.customer_to_supplier:
-                        picking_ids.append(move.picking_id.id)
-        shipments = list(set(picking_ids))
+            shipments |= line._get_out_pickings()
         # choose the view_mode accordingly
         if len(shipments) != 1:
-            result["domain"] = "[('id', 'in', " + str(shipments) + ")]"
+            result["domain"] = "[('id', 'in', " + str(shipments.ids) + ")]"
         elif len(shipments) == 1:
             res = self.env.ref("stock.view_picking_form", False)
             result["views"] = [(res and res.id or False, "form")]
-            result["res_id"] = shipments[0]
+            result["res_id"] = shipments.ids[0]
         return result
 
     def action_view_rma_lines(self):
         if self.type == "customer":
             # from customer we link to supplier rma
             action = self.env.ref("rma.action_rma_supplier_lines")
-            rma_lines = self.supplier_rma_line_ids.ids
+            rma_lines = self.supplier_rma_line_ids
             res = self.env.ref("rma.view_rma_line_supplier_form", False)
         else:
             # from supplier we link to customer rma
             action = self.env.ref("rma.action_rma_customer_lines")
-            rma_lines = self.customer_rma_id.ids
+            rma_lines = self.customer_rma_id
             res = self.env.ref("rma.view_rma_line_form", False)
         result = action.sudo().read()[0]
         # choose the view_mode accordingly
         if rma_lines and len(rma_lines) != 1:
-            result["domain"] = rma_lines.ids
+            result["domain"] = [("id", "in", rma_lines.ids)]
         elif len(rma_lines) == 1:
             result["views"] = [(res and res.id or False, "form")]
-            result["res_id"] = rma_lines[0]
+            result["res_id"] = rma_lines.id
         return result
 
     @api.constrains("partner_id", "rma_id")

@@ -1,4 +1,4 @@
-# © 2017 Eficent Business and IT Consulting Services S.L.
+# Copyright 2017-2022 ForgeFlow S.L.
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
 
 from odoo import _, api, fields, models
@@ -218,6 +218,12 @@ class RmaOrderLine(models.Model):
         result["domain"] = [("id", "in", orders.ids)]
         return result
 
+    def action_rma_cancel(self):
+        res = super().action_rma_cancel()
+        for line in self:
+            line.purchase_order_line_ids.mapped("order_id").button_cancel()
+        return res
+
     def _get_rma_purchased_qty(self):
         self.ensure_one()
         qty = 0.0
@@ -228,3 +234,25 @@ class RmaOrderLine(models.Model):
         ):
             qty += self.uom_id._compute_quantity(line.product_qty, line.product_uom)
         return qty
+
+    def _get_price_unit(self):
+        self.ensure_one()
+        price_unit = super(RmaOrderLine, self)._get_price_unit()
+        if self.purchase_order_line_id:
+            moves = self.purchase_order_line_id.move_ids
+            if moves:
+                layers = moves.sudo().mapped("stock_valuation_layer_ids")
+                if layers:
+                    price_unit = sum(layers.mapped("value")) / sum(
+                        layers.mapped("quantity")
+                    )
+        elif self.account_move_line_id.purchase_line_id:
+            purchase_lines = self.account_move_line_id.purchase_line_id
+            moves = purchase_lines.mapped("move_ids")
+            if moves:
+                layers = moves.sudo().mapped("stock_valuation_layer_ids")
+                if layers:
+                    price_unit = sum(layers.mapped("value")) / sum(
+                        layers.mapped("quantity")
+                    )
+        return price_unit
