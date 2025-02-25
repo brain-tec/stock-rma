@@ -11,26 +11,14 @@ class SaleOrderLine(models.Model):
         """Allows to search by SO reference."""
         if not args:
             args = []
-        args += [
-            "|",
-            (self._rec_name, operator, name),
-            ("order_id.name", operator, name),
-        ]
+        if name:
+            args += [
+                "|",
+                (self._rec_name, operator, name),
+                ("order_id.name", operator, name),
+            ]
         return super(SaleOrderLine, self).name_search(
             name=name, args=args, operator=operator, limit=limit
-        )
-
-    @api.model
-    def _name_search(
-        self, name="", args=None, operator="ilike", limit=100, name_get_uid=None
-    ):
-        """Typed text is cleared here for better extensibility."""
-        return super(SaleOrderLine, self)._name_search(
-            name="",
-            args=args,
-            operator=operator,
-            limit=limit,
-            name_get_uid=name_get_uid,
         )
 
     def name_get(self):
@@ -62,7 +50,7 @@ class SaleOrderLine(models.Model):
             return super(SaleOrderLine, self).name_get()
 
     rma_line_id = fields.Many2one(
-        comodel_name="rma.order.line", string="RMA", ondelete="restrict"
+        comodel_name="rma.order.line", string="RMA", ondelete="restrict", copy=False
     )
 
     def _prepare_order_line_procurement(self, group_id=False):

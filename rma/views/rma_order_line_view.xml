@@ -19,6 +19,7 @@
                     />
                     <field name="rma_id" groups="rma.group_rma_groups" />
                     <field name="origin" />
+                    <field name="date_rma" />
                     <field name="operation_id" />
                     <field name="supplier_address_id" />
                     <field name="uom_id" groups="uom.group_uom" />
@@ -47,6 +48,7 @@
                     />
                     <field name="rma_id" groups="rma.group_rma_groups" />
                     <field name="origin" />
+                    <field name="date_rma" />
                     <field name="operation_id" domain="[('type','=','supplier')]" />
                     <field name="uom_id" groups="uom.group_uom" />
                     <field name="product_qty" />
@@ -96,10 +98,22 @@
                             name="action_rma_done"
                             type="object"
                             string="Done"
-                            attrs="{'invisible':[('state', 'in', ('done', 'draft'))]}"
+                            attrs="{'invisible':[('state', 'in', ('done', 'draft', 'canceled'))]}"
                             groups="rma.group_rma_customer_user"
                         />
-                        <field name="state" widget="statusbar" nolabel="1" />
+                        <button
+                            name="action_rma_cancel"
+                            type="object"
+                            string="Cancel"
+                            attrs="{'invisible':[('state', 'in', ('done', 'canceled'))]}"
+                            groups="rma.group_rma_customer_user"
+                        />
+                        <field
+                            name="state"
+                            widget="statusbar"
+                            statusbar_visible="draft,to_approve,approved,done"
+                            nolabel="1"
+                        />
                     </header>
                     <sheet>
                         <div name="button_box" class="oe_button_box">
@@ -179,6 +193,7 @@
                             </group>
                             <group>
                                 <group name="contact">
+                                    <field name="date_rma" />
                                     <field name="requested_by" readonly="1" />
                                     <field name="assigned_to" />
                                     <field name="type" invisible="1" />
@@ -380,6 +395,7 @@
                     <field name="assigned_to" />
                     <field name="product_id" />
                     <field name="lot_id" />
+                    <field name="date_rma" />
                     <separator />
                     <filter
                         name="assigned_to"
@@ -489,6 +505,16 @@
             <field name="code">
 if records.filtered(lambda x: x.state == "draft"):
     records.filtered(lambda x: x.state == "draft").action_rma_to_approve()
+            </field>
+     </record>
+
+        <record model="ir.actions.server" id="action_request_cancel_rma_order_line">
+            <field name="name">Cancel</field>
+            <field name="model_id" ref="rma.model_rma_order_line" />
+            <field name="binding_model_id" ref="rma.model_rma_order_line" />
+            <field name="state">code</field>
+            <field name="code">
+    records.action_rma_cancel()
             </field>
      </record>
 

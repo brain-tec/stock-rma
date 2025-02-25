@@ -124,6 +124,20 @@ class RmaOrderLine(models.Model):
         store=True,
     )
 
+    commercial_partner_id = fields.Many2one(
+        "res.partner",
+        string="Commercial Entity",
+        store=True,
+        readonly=True,
+        compute="_compute_commercial_partner_id",
+        ondelete="restrict",
+    )
+
+    @api.depends("partner_id")
+    def _compute_commercial_partner_id(self):
+        for rma_line in self:
+            rma_line.commercial_partner_id = rma_line.partner_id.commercial_partner_id
+
     @api.onchange("product_id", "partner_id")
     def _onchange_product_id(self):
         """Domain for sale_line_id is computed here to make it dynamic."""
@@ -360,3 +374,39 @@ class RmaOrderLine(models.Model):
             # We get the cost from the original invoice line
             price_unit = self.account_move_line_id.price_unit
         return price_unit
+
+    def _refund_at_zero_cost(self):
+        make_refund = (
+            self.env["rma.refund"]
+            .with_context(
+                {
+                    "customer": True,
+                    "active_ids": self.ids,
+                    "active_model": "rma.order.line",
+                }
+            )
+            .create({"description": "RMA Anglosaxon Regularisation"})
+        )
+        for item in make_refund.item_ids:
+            item.qty_to_refund = item.line_id.qty_received - item.line_id.qty_refunded
+        action_refund = make_refund.invoice_refund()
+        refund_id = action_refund.get("res_id", False)
+        if refund_id:
+            refund = self.env["account.move"].browse(refund_id)
+            refund._post()
+
+    def _check_refund_zero_cost(self):
+        """
+        In the scenario where a company uses anglo-saxon accounting, if you receive
+        products from a customer and don't expect to refund the customer but send a
+        replacement unit you still need to create a debit entry on the
+        Stock Interim (Delivered) account. In order to do this the best approach is
+        to create a customer refund from the RMA, but set as free of charge
+        (price unit = 0). The refund will be 0, but the Stock Interim (Delivered)
+        account will be posted anyways.
+        """
+        # For some reason api.depends on qty_received is not working. Using the
+        # _account_entry_move method in stock move as trigger then
+        for rec in self.filtered(lambda l: l.operation_id.automated_refund):
+            if rec.qty_received > rec.qty_refunded:
+                rec._refund_at_zero_cost()

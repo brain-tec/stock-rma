@@ -40,6 +40,7 @@
                             class="oe_stat_button"
                             icon="fa-truck"
                             groups="stock.group_stock_user"
+                            attrs="{'invisible': [('in_shipment_count', '=', 0)]}"
                         >
                         <field
                                 name="in_shipment_count"
@@ -53,6 +54,7 @@
                             class="oe_stat_button"
                             icon="fa-truck"
                             groups="stock.group_stock_user"
+                            attrs="{'invisible': [('out_shipment_count', '=', 0)]}"
                         >
                         <field
                                 name="out_shipment_count"
@@ -66,6 +68,7 @@
                             class="oe_stat_button"
                             icon="fa-list"
                             groups="rma.group_rma_customer_user"
+                            attrs="{'invisible': [('line_count', '=', 0)]}"
                         >
                         <field name="line_count" widget="statinfo" string="RMA Lines" />
                     </button>
@@ -119,7 +122,29 @@
                 <group>
                     <group name="inbound_route" string="Inbound">
                         <field
+                                name="operation_default_id"
+                                domain="[('type','=','customer')]"
+                            />
+                        <field
                                 name="in_warehouse_id"
+                                attrs="{'readonly':[('state', '!=', 'draft')]}"
+                            />
+                        <field
+                                name="in_route_id"
+                                attrs="{'readonly':[('state', '!=', 'draft')]}"
+                            />
+                        <field
+                                name="out_warehouse_id"
+                                invisible="1"
+                                attrs="{'readonly':[('state', '!=', 'draft')]}"
+                            />
+                        <field
+                                name="location_id"
+                                attrs="{'readonly':[('state', '!=', 'draft')]}"
+                            />
+                        <field
+                                name="out_route_id"
+                                invisible="1"
                                 attrs="{'readonly':[('state', '!=', 'draft')]}"
                             />
                         <field
@@ -163,6 +188,7 @@
                                     name="lines"
                                     editable="bottom"
                                     default_order="id asc"
+                                    create="0"
                                 >
                                 <field name="sequence" widget="handle" />
                                 <field name="state" invisible="True" />
@@ -247,6 +273,21 @@
                     'supplier': 1,
                     'hide_title': True}
                 </attribute>
+            </field>
+            <field name="operation_default_id" position="attributes">
+                <attribute name="domain">[('type','=','supplier')]</attribute>
+            </field>
+            <field name="in_warehouse_id" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <field name="out_warehouse_id" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <field name="in_route_id" position="attributes">
+                <attribute name="invisible">0</attribute>
+            </field>
+            <field name="out_route_id" position="attributes">
+                <attribute name="invisible">0</attribute>
             </field>
         </field>
     </record>

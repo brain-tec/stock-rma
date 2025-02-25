@@ -32,7 +32,7 @@ class StockRule(models.Model):
         if "rma_line_id" in values:
             line = values.get("rma_line_id")
             line = self.env["rma.order.line"].browse([line])
-        elif "group_id" in values:
+        elif "group_id" in values and values["group_id"]:
             pg = values["group_id"]
             line = pg.rma_line_id
         if line:
@@ -41,5 +41,7 @@ class StockRule(models.Model):
                 res["partner_id"] = line.delivery_address_id.id
             elif line.rma_id.partner_id:
                 res["partner_id"] = line.rma_id.partner_id.id
-            res["price_unit"] = line._get_price_unit()
+            res["price_unit"] = line.with_context(
+                product_required=product_id
+            )._get_price_unit()
         return res

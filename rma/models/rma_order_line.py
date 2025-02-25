@@ -217,6 +217,10 @@ class RmaOrderLine(models.Model):
         for rec in self.filtered(lambda r: r.type == "supplier"):
             rec.rma_line_count = len(rec.customer_rma_id)
 
+    @api.model
+    def _default_date_rma(self):
+        return fields.Datetime.now()
+
     delivery_address_id = fields.Many2one(
         comodel_name="res.partner",
         string="Partner delivery address",
@@ -248,12 +252,16 @@ class RmaOrderLine(models.Model):
         states={"draft": [("readonly", False)]},
         help="Reference of the document that produced this rma.",
     )
+    date_rma = fields.Datetime(
+        string="Order Date", index=True, default=lambda self: self._default_date_rma()
+    )
     state = fields.Selection(
         selection=[
             ("draft", "Draft"),
             ("to_approve", "To Approve"),
             ("approved", "Approved"),
             ("done", "Done"),
+            ("canceled", "Canceled"),
         ],
         string="State",
         default="draft",
@@ -515,6 +523,10 @@ class RmaOrderLine(models.Model):
         string="Under Warranty?", readonly=True, states={"draft": [("readonly", False)]}
     )
 
+    def _get_stock_move_reference(self):
+        self.ensure_one()
+        return self.reference_move_id
+
     def _prepare_rma_line_from_stock_move(self, sm, lot=False):
         if not self.type:
             self.type = self._get_default_type()
@@ -652,6 +664,25 @@ class RmaOrderLine(models.Model):
         self.write({"state": "done"})
         return True
 
+    def check_cancel(self):
+        for move in self.move_ids:
+            if move.state == "done":
+                raise UserError(
+                    _("Unable to cancel %s as some receptions have already been done.")
+                    % (self.name)
+                )
+
+    def action_rma_cancel(self):
+        for order in self:
+            order.check_cancel()
+            order.write({"state": "canceled"})
+            order.move_ids._action_cancel()
+            shipments = order._get_in_pickings()
+            shipments |= order._get_out_pickings()
+            for ship in shipments:
+                ship.action_cancel()
+        return True
+
     @api.model
     def create(self, vals):
         if not vals.get("name") or vals.get("name") == "/":
@@ -704,15 +735,25 @@ class RmaOrderLine(models.Model):
             return result
         self.receipt_policy = self.operation_id.receipt_policy
         self.delivery_policy = self.operation_id.delivery_policy
-        self.in_warehouse_id = self.operation_id.in_warehouse_id
-        self.out_warehouse_id = self.operation_id.out_warehouse_id
-        self.location_id = (
-            self.operation_id.location_id or self.in_warehouse_id.lot_rma_id
+        self.customer_to_supplier = (
+            self.rma_id.customer_to_supplier or self.operation_id.customer_to_supplier
         )
-        self.customer_to_supplier = self.operation_id.customer_to_supplier
-        self.supplier_to_customer = self.operation_id.supplier_to_customer
-        self.in_route_id = self.operation_id.in_route_id
-        self.out_route_id = self.operation_id.out_route_id
+        self.supplier_to_customer = (
+            self.rma_id.supplier_to_customer or self.operation_id.supplier_to_customer
+        )
+        self.in_warehouse_id = (
+            self.rma_id.in_warehouse_id or self.operation_id.in_warehouse_id
+        )
+        self.out_warehouse_id = (
+            self.rma_id.out_warehouse_id or self.operation_id.out_warehouse_id
+        )
+        self.location_id = (
+            self.rma_id.location_id
+            or self.operation_id.location_id
+            or self.in_warehouse_id.lot_rma_id
+        )
+        self.in_route_id = self.rma_id.in_route_id or self.operation_id.in_route_id
+        self.out_route_id = self.rma_id.out_route_id or self.operation_id.out_route_id
         return result
 
     @api.onchange("customer_to_supplier", "type")
@@ -763,20 +804,20 @@ class RmaOrderLine(models.Model):
         if self.type == "customer":
             # from customer we link to supplier rma
             action = self.env.ref("rma.action_rma_supplier_lines")
-            rma_lines = self.supplier_rma_line_ids.ids
+            rma_lines = self.supplier_rma_line_ids
             res = self.env.ref("rma.view_rma_line_supplier_form", False)
         else:
             # from supplier we link to customer rma
             action = self.env.ref("rma.action_rma_customer_lines")
-            rma_lines = self.customer_rma_id.ids
+            rma_lines = self.customer_rma_id
             res = self.env.ref("rma.view_rma_line_form", False)
         result = action.sudo().read()[0]
         # choose the view_mode accordingly
         if rma_lines and len(rma_lines) != 1:
-            result["domain"] = rma_lines.ids
+            result["domain"] = [("id", "in", rma_lines.ids)]
         elif len(rma_lines) == 1:
             result["views"] = [(res and res.id or False, "form")]
-            result["res_id"] = rma_lines[0]
+            result["res_id"] = rma_lines.id
         return result
 
     @api.constrains("partner_id", "rma_id")
