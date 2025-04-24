@@ -93,6 +93,7 @@
                             class="oe_stat_button"
                             icon="fa-truck"
                             groups="stock.group_stock_user"
+                            attrs="{'invisible': [('in_shipment_count', '=', 0)]}"
                         >
                         <field
                                 name="in_shipment_count"
@@ -106,6 +107,7 @@
                             class="oe_stat_button"
                             icon="fa-truck"
                             groups="stock.group_stock_user"
+                            attrs="{'invisible': [('out_shipment_count', '=', 0)]}"
                         >
                         <field
                                 name="out_shipment_count"
@@ -119,6 +121,7 @@
                             class="oe_stat_button"
                             icon="fa-list"
                             groups="rma.group_rma_customer_user"
+                            attrs="{'invisible': [('line_count', '=', 0)]}"
                         >
                         <field name="line_count" widget="statinfo" string="RMA Lines" />
                     </button>

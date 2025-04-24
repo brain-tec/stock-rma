@@ -139,8 +139,8 @@ class RmaOrderLine(models.Model):
             "uom_id": line.product_uom.id,
             "operation_id": operation.id,
             "product_qty": line.product_uom_qty,
-            "delivery_address_id": line.order_id.partner_id.id,
-            "invoice_address_id": line.order_id.partner_id.id,
+            "delivery_address_id": line.order_id.partner_shipping_id.id,
+            "invoice_address_id": line.order_id.partner_invoice_id.id,
             "price_unit": line.currency_id._convert(
                 line.price_unit,
                 line.currency_id,
@@ -232,7 +232,13 @@ class RmaOrderLine(models.Model):
                 and x.location_dest_id.usage == "customer"
             )
             if moves:
-                layers = moves.sudo().mapped("stock_valuation_layer_ids")
+                # We take negative valuation layers, as are to customers,
+                # and we handle dropship cases where will have negative and positive layers
+                layers = (
+                    moves.sudo()
+                    .mapped("stock_valuation_layer_ids")
+                    .filtered(lambda layer: layer.quantity < 0 and layer.value < 0)
+                )
                 if layers:
                     price_unit = sum(layers.mapped("value")) / sum(
                         layers.mapped("quantity")

@@ -121,6 +121,13 @@ class RmaRefund(models.TransientModel):
             currency = rma.account_move_line_id.currency_id
         return currency
 
+    def _get_refund_discount(self, rma):
+        discount = 0.0
+        # If this references a previous invoice/bill, use the same unit price
+        if rma.account_move_line_id:
+            discount = rma.account_move_line_id.discount
+        return discount
+
     @api.model
     def prepare_refund_line(self, item):
         values = {
@@ -130,6 +137,7 @@ class RmaRefund(models.TransientModel):
             "product_id": item.product.id,
             "rma_line_id": item.line_id.id,
             "quantity": item.qty_to_refund,
+            "discount": self._get_refund_discount(item.line_id),
         }
         return values
 
@@ -151,18 +159,29 @@ class RmaRefund(models.TransientModel):
                 ],
                 limit=1,
             )
+        rma_number_ref = rma_line.rma_id.name or rma_line.name
+        reason = wizard.description
+        if reason == rma_number_ref:
+            reason = False
+        ref = _("Refund created by %(rnr)s, %(r)s") % {
+            "rnr": rma_number_ref,
+            "r": reason,
+        }
+        if not reason:
+            ref = _("Refund created by %s") % rma_number_ref
         values = {
-            "payment_reference": rma_line.rma_id.name or rma_line.name,
-            "invoice_origin": rma_line.rma_id.name or rma_line.name,
-            "ref": False,
+            "payment_reference": rma_number_ref,
+            "invoice_origin": rma_number_ref,
+            "ref": ref,
             "move_type": "in_refund" if rma_line.type == "supplier" else "out_refund",
             "journal_id": journal.id,
-            "fiscal_position_id": rma_line.partner_id.property_account_position_id.id,
             "state": "draft",
             "currency_id": self._get_refund_currency(rma_line).id,
             "date": wizard.date,
             "invoice_date": wizard.date_invoice,
             "partner_id": rma_line.invoice_address_id.id or rma_line.partner_id.id,
+            "partner_shipping_id": rma_line.delivery_address_id.id
+            or rma_line.partner_id.id,
             "invoice_line_ids": [
                 (0, None, self.prepare_refund_line(item)) for item in self.item_ids
             ],
