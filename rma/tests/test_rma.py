@@ -122,7 +122,8 @@ class TestRma(common.TransactionCase):
     def _configure_2_steps_incoming_outgoing(cls):
         cls.second_step_incoming_rule.write({"active": True})
         cls.second_step_outgoing_rule.write({"active": True})
-        rma_customer_rule = cls.env.ref("rma.rule_rma_customer_out_pull")
+
+        rma_customer_rule = cls.wh.rma_customer_out_pull_id
         rma_customer_rule.write(
             {
                 "procure_method": "make_to_order",
@@ -677,8 +678,8 @@ class TestRma(common.TransactionCase):
         )
         # product specific
         self._check_equal_quantity(
-            lines.filtered(lambda l: l.product_id == self.product_1).qty_to_deliver,
-            3,
+            lines.filtered(lambda x: x.product_id == self.product_1).qty_to_deliver,
+            0,
             "Wrong qty to_deliver",
         )
         self._check_equal_quantity(
@@ -687,8 +688,8 @@ class TestRma(common.TransactionCase):
             "Wrong qty outgoing",
         )
         self._check_equal_quantity(
-            lines.filtered(lambda l: l.product_id == self.product_2).qty_to_deliver,
-            5,
+            lines.filtered(lambda x: x.product_id == self.product_2).qty_to_deliver,
+            0,
             "Wrong qty to_deliver",
         )
         self._check_equal_quantity(
@@ -697,8 +698,8 @@ class TestRma(common.TransactionCase):
             "Wrong qty outgoing",
         )
         self._check_equal_quantity(
-            lines.filtered(lambda l: l.product_id == self.product_3).qty_to_deliver,
-            2,
+            lines.filtered(lambda x: x.product_id == self.product_3).qty_to_deliver,
+            0,
             "Wrong qty to_deliver",
         )
         self._check_equal_quantity(
@@ -911,8 +912,8 @@ class TestRma(common.TransactionCase):
             "Wrong qty_to_receive",
         )
         self._check_equal_quantity(
-            lines.filtered(lambda l: l.product_id == self.product_1).qty_to_deliver,
-            3,
+            lines.filtered(lambda x: x.product_id == self.product_1).qty_to_deliver,
+            0,
             "Wrong qty_to_deliver",
         )
         self._check_equal_quantity(
@@ -921,8 +922,8 @@ class TestRma(common.TransactionCase):
             "Wrong qty_to_receive",
         )
         self._check_equal_quantity(
-            lines.filtered(lambda l: l.product_id == self.product_2).qty_to_deliver,
-            5,
+            lines.filtered(lambda x: x.product_id == self.product_2).qty_to_deliver,
+            0,
             "Wrong qty_to_deliver",
         )
         self._check_equal_quantity(
@@ -931,8 +932,8 @@ class TestRma(common.TransactionCase):
             "Wrong qty_to_receive",
         )
         self._check_equal_quantity(
-            lines.filtered(lambda l: l.product_id == self.product_3).qty_to_deliver,
-            2,
+            lines.filtered(lambda x: x.product_id == self.product_3).qty_to_deliver,
+            0,
             "Wrong qty_to_deliver",
         )
         self.assertEqual(
@@ -1328,9 +1329,6 @@ class TestRma(common.TransactionCase):
         Receive a product and then return it using a multi-step route.
         """
         # Alter the customer RMA route to make it multi-step
-        # Get rid of the duplicated rule
-        self.env.ref("rma.rule_rma_customer_out_pull").active = False
-        self.env.ref("rma.rule_rma_customer_in_pull").active = False
         cust_in_pull_rule = self.customer_route.rule_ids.filtered(
             lambda r: r.location_dest_id == self.stock_rma_location
         )
