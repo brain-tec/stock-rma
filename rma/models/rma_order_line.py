@@ -77,7 +77,7 @@ class RmaOrderLine(models.Model):
         for move in self.move_ids:
             first_usage = move._get_first_usage()
             last_usage = move._get_last_usage()
-            if first_usage == "internal" and last_usage != "internal":
+            if first_usage in ("internal", "production") and last_usage != "internal":
                 moves |= move
             elif first_usage == "supplier" and last_usage == "customer":
                 moves |= moves
@@ -136,6 +136,7 @@ class RmaOrderLine(models.Model):
         "move_ids",
         "move_ids.state",
         "qty_received",
+        "qty_incoming",
         "receipt_policy",
         "product_qty",
         "type",
@@ -144,9 +145,13 @@ class RmaOrderLine(models.Model):
         for rec in self:
             rec.qty_to_receive = 0.0
             if rec.receipt_policy == "ordered":
-                rec.qty_to_receive = rec.product_qty - rec.qty_received
+                rec.qty_to_receive = (
+                    rec.product_qty - rec.qty_incoming - rec.qty_received
+                )
             elif rec.receipt_policy == "delivered":
-                rec.qty_to_receive = rec.qty_delivered - rec.qty_received
+                rec.qty_to_receive = (
+                    rec.qty_delivered - rec.qty_incoming - rec.qty_received
+                )
 
     @api.depends(
         "move_ids",
@@ -156,6 +161,7 @@ class RmaOrderLine(models.Model):
         "type",
         "qty_delivered",
         "qty_received",
+        "qty_outgoing",
     )
     def _compute_qty_to_deliver(self):
         for rec in self:
