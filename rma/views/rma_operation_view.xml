@@ -5,7 +5,7 @@
         <field name="model">rma.operation</field>
         <field name="arch" type="xml">
             <list name="RMA Operations">
-                <field name="active" invisible="1" />
+                <field name="active" column_invisible="1" />
                 <field name="code" />
                 <field name="name" />
                 <field name="receipt_policy" />
@@ -60,6 +60,7 @@
                         <group name="outbound" string="Outbound">
                             <field name="out_route_id" />
                             <field name="out_warehouse_id" />
+                            <field name="location_supplier_id" />
                             <field
                                 name="supplier_to_customer"
                                 invisible="type == 'customer'"

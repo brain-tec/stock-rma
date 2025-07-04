@@ -77,7 +77,7 @@ class RmaOrderLine(models.Model):
         for move in self.move_ids:
             first_usage = move._get_first_usage()
             last_usage = move._get_last_usage()
-            if first_usage == "internal" and last_usage != "internal":
+            if first_usage in ("internal", "production") and last_usage != "internal":
                 moves |= move
             elif first_usage == "supplier" and last_usage == "customer":
                 moves |= moves
@@ -122,7 +122,12 @@ class RmaOrderLine(models.Model):
                     continue
                 elif direction == "in" and move.move_dest_ids:
                     continue
-                qty += product_obj._compute_quantity(move.product_uom_qty, rec.uom_id)
+                if move.state == "done":
+                    qty += product_obj._compute_quantity(move.quantity, rec.uom_id)
+                else:
+                    qty += product_obj._compute_quantity(
+                        move.product_uom_qty, rec.uom_id
+                    )
             return qty
 
     @api.depends(
@@ -154,14 +159,19 @@ class RmaOrderLine(models.Model):
         "type",
         "qty_delivered",
         "qty_received",
+        "qty_outgoing",
     )
     def _compute_qty_to_deliver(self):
         for rec in self:
             rec.qty_to_deliver = 0.0
             if rec.delivery_policy == "ordered":
-                rec.qty_to_deliver = rec.product_qty - rec.qty_delivered
+                rec.qty_to_deliver = max(
+                    rec.product_qty - rec.qty_outgoing - rec.qty_delivered, 0
+                )
             elif rec.delivery_policy == "received":
-                rec.qty_to_deliver = rec.qty_received - rec.qty_delivered
+                rec.qty_to_deliver = max(
+                    rec.qty_received - rec.qty_outgoing - rec.qty_delivered, 0
+                )
 
     @api.depends("move_ids", "move_ids.state", "type")
     def _compute_qty_incoming(self):
@@ -181,7 +191,8 @@ class RmaOrderLine(models.Model):
     def _compute_qty_outgoing(self):
         for rec in self:
             qty = rec._get_rma_move_qty(
-                ("draft", "confirmed", "assigned", "waiting"), direction="out"
+                ("draft", "confirmed", "assigned", "waiting", "partially_available"),
+                direction="out",
             )
             rec.qty_outgoing = qty
 
@@ -412,6 +423,12 @@ class RmaOrderLine(models.Model):
         string="Send To This Company Location",
         required=True,
         default=lambda self: self._default_location_id(),
+    )
+    location_supplier_id = fields.Many2one(
+        comodel_name="stock.location",
+        string="Send To This Supplier Location",
+        help="If no location is selected, the one define in the delivery "
+        "address will be used, which by default is 'Vendors' location.",
     )
     customer_rma_id = fields.Many2one(
         "rma.order.line", string="Customer RMA line", ondelete="cascade"
@@ -726,6 +743,9 @@ class RmaOrderLine(models.Model):
             self.rma_id.location_id
             or self.operation_id.location_id
             or self.in_warehouse_id.lot_rma_id
+        )
+        self.location_supplier_id = (
+            self.rma_id.location_supplier_id or self.operation_id.location_supplier_id
         )
         self.in_route_id = self.rma_id.in_route_id or self.operation_id.in_route_id
         self.out_route_id = self.rma_id.out_route_id or self.operation_id.out_route_id
