@@ -619,10 +619,9 @@ class RmaOrderLine(models.Model):
             if rec.product_id.tracking == "serial" and rec.product_qty != 1:
                 raise ValidationError(
                     self.env._(
-                        "Product %s has serial tracking configuration, "
-                        "quantity to receive should be 1"
+                        f"Product {rec.product_id.display_name} has serial tracking "
+                        "configuration, quantity to receive should be 1"
                     )
-                    % (rec.product_id.display_name)
                 )
 
     def action_rma_to_approve(self):
@@ -664,9 +663,9 @@ class RmaOrderLine(models.Model):
             if move.state == "done":
                 raise UserError(
                     self.env._(
-                        "Unable to cancel %s as some receptions have already been done."
+                        f"Unable to cancel {self.name} as some "
+                        "receptions have already been done."
                     )
-                    % (self.name)
                 )
 
     def action_rma_cancel(self):

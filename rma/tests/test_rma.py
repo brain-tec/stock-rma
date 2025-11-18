@@ -17,7 +17,7 @@ class TestRma(common.TransactionCase):
         cls.rma_add_stock_move = cls.env["rma_add_stock_move"]
         cls.product_ctg_model = cls.env["product.category"]
         cls.lot_obj = cls.env["stock.lot"]
-        cls.package_obj = cls.env["stock.quant.package"]
+        cls.package_obj = cls.env["stock.package"]
         cls.stockpicking = cls.env["stock.picking"]
         cls.rma = cls.env["rma.order"]
         cls.rma_line = cls.env["rma.order.line"]
@@ -88,14 +88,14 @@ class TestRma(common.TransactionCase):
         # create rules to have multi step reception/shipment, unactive by default
         cls.test_rma_loc = cls.stock_rma_location.copy({"name": "rma loc shipping"})
         rma_route = cls.env.ref("rma.route_rma_customer")
-        rma_route_2steps_classic = rma_route.copy(
+        cls.rma_route_2steps_classic = rma_route.copy(
             {"name": "RMA Customer 2 Steps (classic test)", "rule_ids": False}
         )
         cls.rma_cust_replace_op_2sc_id = cls.rma_cust_replace_op_id.copy(
             {
                 "name": "Replace After Receive 2steps (classic test)",
                 "code": "RPL-C-2C",
-                "in_route_id": rma_route_2steps_classic.id,
+                "in_route_id": cls.rma_route_2steps_classic.id,
             }
         )
         cls.rma_location = cls.env.ref("rma.location_rma")
@@ -108,7 +108,7 @@ class TestRma(common.TransactionCase):
                 "location_src_id": cls.wh.wh_input_stock_loc_id.id,
                 "location_dest_id": cls.rma_location.id,
                 "procure_method": "make_to_order",
-                "route_id": rma_route_2steps_classic.id,
+                "route_id": cls.rma_route_2steps_classic.id,
                 "warehouse_id": cls.wh.id,
                 "company_id": cls.wh.company_id.id,
                 "active": False,
@@ -123,7 +123,7 @@ class TestRma(common.TransactionCase):
                 "location_src_id": cls.customer_location.id,
                 "location_dest_id": cls.wh.wh_input_stock_loc_id.id,
                 "procure_method": "make_to_stock",
-                "route_id": rma_route_2steps_classic.id,
+                "route_id": cls.rma_route_2steps_classic.id,
                 "warehouse_id": cls.wh.id,
                 "company_id": cls.wh.company_id.id,
                 "location_dest_from_rule": True,
@@ -146,7 +146,7 @@ class TestRma(common.TransactionCase):
                 "email": "example@yourcompany.com",
                 "company_id": company.id,
                 "company_ids": [(4, company.id)],
-                "groups_id": [(6, 0, group_ids)],
+                "group_ids": [(6, 0, group_ids)],
             }
         )
         return user
@@ -432,7 +432,6 @@ class TestRma(common.TransactionCase):
         location_id = src.id
 
         res = {
-            "name": product.name,
             "partner_id": picking_in.partner_id.id,
             "origin": picking_in.name,
             "company_id": picking_in.picking_type_id.warehouse_id.company_id.id,
