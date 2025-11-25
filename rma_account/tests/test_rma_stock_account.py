@@ -50,8 +50,6 @@ class TestRmaStockAccount(TestRma):
                 "name": "test_product_ctg",
                 "property_stock_valuation_account_id": cls.account_inventory.id,
                 "property_valuation": "real_time",
-                "property_stock_account_input_categ_id": cls.account_grni.id,
-                "property_stock_account_output_categ_id": cls.account_gdni.id,
                 "rma_approval_policy": "one_step",
                 "rma_customer_operation_id": cls.rma_operation_customer_refund_id.id,
                 "rma_supplier_operation_id": cls.rma_sup_replace_op_id.id,
