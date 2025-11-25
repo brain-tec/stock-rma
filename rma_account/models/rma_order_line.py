@@ -192,7 +192,7 @@ class RmaOrderLine(models.Model):
             )
             if not warehouse:
                 raise ValidationError(
-                    _("Please define a warehouse with a" " default rma location")
+                    _("Please define a warehouse with a default rma location")
                 )
         data = {
             "product_id": line.product_id.id,

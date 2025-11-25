@@ -64,10 +64,7 @@ class RmaRefund(models.TransientModel):
             lines = rma_line_obj.browse(active_ids)
         if len(lines.mapped("partner_id")) > 1:
             raise ValidationError(
-                _(
-                    "Only RMAs from the same partner can be processed at "
-                    "the same time."
-                )
+                _("Only RMAs from the same partner can be processed at the same time.")
             )
         for line in lines:
             items.append([0, 0, self._prepare_item(line)])

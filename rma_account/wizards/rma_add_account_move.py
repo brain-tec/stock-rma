@@ -72,7 +72,7 @@ class RmaAddAccountMove(models.TransientModel):
             )
             if not warehouse:
                 raise ValidationError(
-                    _("Please define a warehouse with a" " default rma location")
+                    _("Please define a warehouse with a default rma location")
                 )
         data = {
             "partner_id": self.partner_id.id,
