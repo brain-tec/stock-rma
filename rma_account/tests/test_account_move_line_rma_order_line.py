@@ -102,8 +102,6 @@ class TestAccountMoveLineRmaOrderLine(common.TransactionCase):
                 "name": "test_product_ctg",
                 "property_stock_valuation_account_id": cls.account_inventory.id,
                 "property_valuation": "real_time",
-                "property_stock_account_input_categ_id": cls.account_grni.id,
-                "property_stock_account_output_categ_id": cls.account_cogs.id,
             }
         )
         product = cls.product_model.create(

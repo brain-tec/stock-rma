@@ -21,7 +21,6 @@ class RmaRefund(models.TransientModel):
                 reason = self.env[active_model].browse(active_ids[0]).rma_id.name or ""
         return reason
 
-    @api.returns("rma.order.line")
     def _prepare_item(self, line):
         values = {
             "product_id": line.product_id.id,
@@ -43,7 +42,7 @@ class RmaRefund(models.TransientModel):
         lines the supplier field is empty otherwise is the unique line
         supplier.
         """
-        context = self._context.copy()
+        context = self.env.context.copy()
         res = super().default_get(fields_list)
         rma_line_obj = self.env["rma.order.line"]
         rma_obj = self.env["rma.order"]
