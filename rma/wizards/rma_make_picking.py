@@ -152,7 +152,7 @@ class RmaMakePicking(models.TransientModel):
             "route_ids": route,
             "reference_ids": stock_ref,
             "rma_line_id": line.id,
-            "partner_id": line.partner_id,
+            "partner_id": line.partner_id.id,
         }
         if (picking_type == "incoming" and line.operation_id.in_force_same_lot) or (
             picking_type == "outgoing" and line.operation_id.out_force_same_lot
@@ -213,7 +213,9 @@ class RmaMakePicking(models.TransientModel):
         for item in self.item_ids:
             line = item.line_id
             if line.state != "approved":
-                raise ValidationError(self.env._("RMA %s is not approved") % line.name)
+                raise ValidationError(
+                    self.env._("RMA ") + line.name + self.env._(" is not approved")
+                )
             if line.receipt_policy == "no" and picking_type == "incoming":
                 raise ValidationError(
                     self.env._("No shipments needed for this operation")
