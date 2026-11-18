@@ -19,7 +19,7 @@ class RmaOrder(models.Model):
         return res
 
     def action_view_repair_transfers(self):
-        super()._compute_repair_transfer_count()
+        super().action_view_repair_transfers()
         self.ensure_one()
         action = self.env.ref("stock.action_picking_tree_all")
         result = action.sudo().read()[0]
