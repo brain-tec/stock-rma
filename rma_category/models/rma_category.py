@@ -5,7 +5,7 @@ from odoo import fields, models
 
 class RmaCategory(models.Model):
     _name = "rma.category"
-    _description = "RMA Cagtegories"
+    _description = "RMA Categories"
     _order = "name"
 
     active = fields.Boolean(
